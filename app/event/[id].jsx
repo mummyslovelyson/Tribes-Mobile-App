@@ -16,9 +16,10 @@ import {
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import Button from '../../src/components/Button';
 import { getEventByIdApi } from '../../src/api/events';
-import { resolveImageUrl } from '../../src/api/client';
+import { resolveImageUrl, API_BASE_URL } from '../../src/api/client';
 import { createOrderApi, applyCouponApi, verifyPaymentApi, simulatePaymentApi } from '../../src/api/orders';
 import { toggleFavoriteApi } from '../../src/api/users';
 import { getEventReviewsApi, createEventReviewApi } from '../../src/api/reviews';
@@ -184,6 +185,13 @@ export default function EventDetailsScreen() {
   const handleConfirmPayment = async () => {
     setOrdering(true);
     try {
+      // Build deep link return URL and backend callback bridge
+      const appReturnUrl = Platform.OS === 'web'
+        ? (typeof window !== 'undefined' ? `${window.location.origin}/payment-callback` : 'https://tribesandcliqs-app.vercel.app/payment-callback')
+        : Linking.createURL('payment-callback');
+
+      const callbackBridgeUrl = `${API_BASE_URL}/orders/payment-callback?app_redirect=${encodeURIComponent(appReturnUrl)}`;
+
       const res = await createOrderApi({
         eventId: Number(event.id),
         items: [
@@ -194,13 +202,20 @@ export default function EventDetailsScreen() {
         ],
         paymentMethod,
         couponCode: couponCode.trim() || undefined,
+        callbackUrl: callbackBridgeUrl,
       });
 
       setCheckoutModalOpen(false);
 
       // If online gateway authorization is required (Paystack):
       if (res?.authorizationUrl) {
-        await WebBrowser.openBrowserAsync(res.authorizationUrl);
+        try {
+          // openAuthSessionAsync intercepts the app scheme/return URL and auto-closes the browser tab
+          await WebBrowser.openAuthSessionAsync(res.authorizationUrl, appReturnUrl);
+        } catch (browserErr) {
+          console.warn('[EventCheckout] openAuthSessionAsync fallback:', browserErr.message);
+          await WebBrowser.openBrowserAsync(res.authorizationUrl);
+        }
       }
 
       // Auto-verify and finalize payment so tickets are instantly minted
