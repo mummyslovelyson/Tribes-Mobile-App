@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Tribes & Cliqs",
+    "slug": "tribes-and-cliqs",
+    "version": "1.0.0",
+    "sdkVersion": "57.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo.png",
+    "scheme": "tribescliqs",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1C232B",
+        "foregroundImage": "./assets/images/logo.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#1C232B",
+          "dark": {
+            "backgroundColor": "#1C232B"
+          }
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
