@@ -11,7 +11,7 @@ export const getEventByIdApi = async (id) => {
 };
 
 export const getCategoriesApi = async () => {
-  const res = await client.get('/categories');
+  const res = await client.get('/events/categories');
   return res.data;
 };
 
