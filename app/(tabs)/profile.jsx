@@ -382,7 +382,7 @@ export default function ProfileScreen() {
               <View style={styles.ticketsSectionHeader}>
                 <View style={{ flex: 1 }}>
                   <View style={styles.ticketSectionTitleRow}>
-                    <Text style={styles.ticketsSectionTitle}>MY PASSES &amp; TICKETS</Text>
+                    <Text style={styles.ticketsSectionTitle}>MY PASSES {'&'} TICKETS</Text>
                     {activeTickets.length > 0 && (
                       <View style={styles.activePassBadge}>
                         <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
