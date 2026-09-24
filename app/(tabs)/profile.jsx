@@ -17,6 +17,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Button from '../../src/components/Button';
 import Header from '../../src/components/Header';
 import Logo from '../../src/components/Logo';
+import TicketCard from '../../src/components/TicketCard';
 import { getMyTicketsApi } from '../../src/api/tickets';
 import { getUserOrdersApi } from '../../src/api/orders';
 import { useAuth } from '../../src/context/AuthContext';
@@ -30,15 +31,24 @@ export default function ProfileScreen() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  // Dashboard Stats State
+  // Dashboard & Tickets State
+  const [tickets, setTickets] = useState([]);
+  const [activeTickets, setActiveTickets] = useState([]);
+  const [pastTickets, setPastTickets] = useState([]);
+  const [ticketTab, setTicketTab] = useState('active'); // 'active' | 'past'
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketCount, setTicketCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [latestTicket, setLatestTicket] = useState(null);
+  const [loadingTickets, setLoadingTickets] = useState(true);
 
   // Live Auto-Refresh Dashboard on screen focus
   useFocusEffect(
     useCallback(() => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated) {
+        setLoadingTickets(false);
+        return;
+      }
       let active = true;
       (async () => {
         try {
@@ -51,9 +61,13 @@ export default function ProfileScreen() {
 
           if (ticketsData.status === 'fulfilled') {
             const list = ticketsData.value?.tickets || ticketsData.value || [];
-            const activeTickets = list.filter((t) => t.status === 'active' || !t.is_used);
-            setTicketCount(activeTickets.length);
-            setLatestTicket(activeTickets[0] || list[0] || null);
+            setTickets(list);
+            const activeList = list.filter((t) => t.status === 'active' || !t.is_used);
+            const pastList = list.filter((t) => t.status === 'used' || t.is_used);
+            setActiveTickets(activeList);
+            setPastTickets(pastList);
+            setTicketCount(activeList.length);
+            setLatestTicket(activeList[0] || list[0] || null);
           }
 
           if (ordersData.status === 'fulfilled') {
@@ -62,6 +76,8 @@ export default function ProfileScreen() {
           }
         } catch (err) {
           console.warn('[ProfileScreen] Dashboard load warning:', err.message);
+        } finally {
+          if (active) setLoadingTickets(false);
         }
       })();
       return () => {
@@ -69,6 +85,8 @@ export default function ProfileScreen() {
       };
     }, [isAuthenticated])
   );
+
+  const displayedTickets = ticketTab === 'active' ? activeTickets : pastTickets;
 
   // Edit Profile Form
   const [editName, setEditName] = useState('');
@@ -359,56 +377,115 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Latest Digital Pass Spotlight */}
-            {latestTicket && (
-              <TouchableOpacity
-                style={styles.ticketSpotlightCard}
-                activeOpacity={0.85}
-                onPress={() => router.push('/(tabs)/tickets')}
-              >
-                <View style={styles.spotlightHeader}>
-                  <View style={styles.spotlightTag}>
-                    <Ionicons name="sparkles" size={12} color="#F59E0B" />
-                    <Text style={styles.spotlightTagText}>NEXT UPCOMING PASS</Text>
+            {/* My Passes & Tickets Section */}
+            <View style={styles.ticketsSection}>
+              <View style={styles.ticketsSectionHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.ticketSectionTitleRow}>
+                    <Text style={styles.ticketsSectionTitle}>MY PASSES &amp; TICKETS</Text>
+                    {activeTickets.length > 0 && (
+                      <View style={styles.activePassBadge}>
+                        <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
+                        <Text style={styles.activePassBadgeText}>{activeTickets.length} ACTIVE</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.spotlightValidBadge}>
-                    <Text style={styles.spotlightValidText}>READY AT GATE</Text>
-                  </View>
+                  <Text style={styles.ticketsSectionSubtitle}>
+                    {activeTickets.length > 0
+                      ? 'Digital entry passes with live check-in QR codes'
+                      : 'Your purchased event passes and ticket history'}
+                  </Text>
                 </View>
 
-                <Text style={styles.spotlightTitle} numberOfLines={1}>
-                  {latestTicket.event_title || latestTicket.title || 'Event Pass'}
-                </Text>
+                {tickets.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => router.push('/(tabs)/tickets')}
+                    activeOpacity={0.7}
+                    style={styles.fullWalletLink}
+                  >
+                    <Text style={styles.fullWalletLinkText}>Wallet</Text>
+                    <Ionicons name="arrow-forward" size={14} color={COLORS.accent} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-                <View style={styles.spotlightMetaRow}>
-                  <View style={styles.spotlightMetaItem}>
-                    <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={styles.spotlightMetaText}>
-                      {latestTicket.start_date
-                        ? new Date(latestTicket.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        : 'Upcoming'}
+              {/* Segment Toggle (Active vs Past) */}
+              {tickets.length > 0 && (
+                <View style={styles.ticketSegmentRow}>
+                  <TouchableOpacity
+                    style={[styles.ticketSegmentBtn, ticketTab === 'active' && styles.ticketSegmentBtnActive]}
+                    onPress={() => setTicketTab('active')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="ticket"
+                      size={14}
+                      color={ticketTab === 'active' ? '#FFFFFF' : COLORS.textMuted}
+                    />
+                    <Text
+                      style={[styles.ticketSegmentText, ticketTab === 'active' && styles.ticketSegmentTextActive]}
+                    >
+                      Active ({activeTickets.length})
                     </Text>
-                  </View>
-                  <View style={styles.spotlightMetaItem}>
-                    <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
-                    <Text style={styles.spotlightMetaText} numberOfLines={1}>
-                      {latestTicket.venue || latestTicket.city || 'Accra'}
-                    </Text>
-                  </View>
-                </View>
+                  </TouchableOpacity>
 
-                <View style={styles.spotlightFooter}>
-                  <View>
-                    <Text style={styles.spotlightCodeLabel}>TICKET CODE</Text>
-                    <Text style={styles.spotlightCode}>{latestTicket.ticket_code || `#TC-${latestTicket.id}`}</Text>
-                  </View>
-                  <View style={styles.spotlightAction}>
-                    <Text style={styles.spotlightActionText}>Show QR Pass</Text>
-                    <Ionicons name="qr-code-outline" size={15} color={COLORS.text} />
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.ticketSegmentBtn, ticketTab === 'past' && styles.ticketSegmentBtnActive]}
+                    onPress={() => setTicketTab('past')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="checkmark-done-circle-outline"
+                      size={14}
+                      color={ticketTab === 'past' ? '#FFFFFF' : COLORS.textMuted}
+                    />
+                    <Text
+                      style={[styles.ticketSegmentText, ticketTab === 'past' && styles.ticketSegmentTextActive]}
+                    >
+                      Past &amp; Used ({pastTickets.length})
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
-            )}
+              )}
+
+              {/* Tickets Render */}
+              {displayedTickets.length > 0 ? (
+                <View style={styles.ticketsListWrapper}>
+                  {displayedTickets.map((t) => (
+                    <TicketCard
+                      key={t.id || t.ticket_code}
+                      ticket={t}
+                      onQrPress={(item) => setSelectedTicket(item)}
+                      onTransferPress={() => router.push('/(tabs)/tickets')}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyTicketsCard}>
+                  <View style={styles.emptyTicketsIconCircle}>
+                    <Ionicons name="ticket-outline" size={26} color={COLORS.textMuted} />
+                  </View>
+                  <Text style={styles.emptyTicketsTitle}>
+                    {ticketTab === 'active' ? 'No active passes' : 'No past tickets'}
+                  </Text>
+                  <Text style={styles.emptyTicketsSubtitle}>
+                    {ticketTab === 'active'
+                      ? 'You don’t have any active tickets right now. Explore upcoming concerts, festivals & events to get your pass.'
+                      : 'Tickets that have been used or past event passes will appear here.'}
+                  </Text>
+                  {ticketTab === 'active' && (
+                    <TouchableOpacity
+                      style={styles.exploreEventsBtn}
+                      onPress={() => router.push('/(tabs)')}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="sparkles" size={14} color="#FFFFFF" />
+                      <Text style={styles.exploreEventsBtnText}>Discover Events</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
 
             {/* Organizer Hub Banner (if Organizer) */}
             {isStaffOrOrganizer && (
@@ -698,6 +775,81 @@ export default function ProfileScreen() {
             />
           </ScrollView>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Attendee QR Code Pass Modal */}
+      <Modal
+        visible={Boolean(selectedTicket)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTicket(null)}
+      >
+        <View style={styles.qrModalBackdrop}>
+          <View style={styles.qrModalCard}>
+            <View style={styles.qrModalHeader}>
+              <View style={styles.qrModalBadge}>
+                <Ionicons name="shield-checkmark" size={13} color="#22C55E" />
+                <Text style={styles.qrModalBadgeText}>OFFICIAL GATE PASS</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedTicket(null)} style={styles.qrCloseBtn}>
+                <Ionicons name="close" size={20} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.qrModalEventTitle} numberOfLines={2}>
+              {selectedTicket?.event_title || selectedTicket?.title || 'Event Pass'}
+            </Text>
+            <Text style={styles.qrModalTier}>
+              {selectedTicket?.ticket_type_name || selectedTicket?.tier_name || 'Standard Admission'}
+            </Text>
+
+            {/* QR Mock graphic with high-contrast container */}
+            <View style={styles.qrGraphicContainer}>
+              <View style={styles.qrGraphicBox}>
+                <Ionicons name="qr-code" size={165} color="#0F1419" />
+              </View>
+              <Text style={styles.qrModalCode}>
+                {selectedTicket?.ticket_code || `#TC-${selectedTicket?.id}`}
+              </Text>
+            </View>
+
+            <View style={styles.qrDetailsRow}>
+              <View style={styles.qrDetailItem}>
+                <Text style={styles.qrDetailLabel}>VENUE</Text>
+                <Text style={styles.qrDetailValue} numberOfLines={1}>
+                  {selectedTicket?.venue || selectedTicket?.city || 'Accra, Ghana'}
+                </Text>
+              </View>
+              <View style={styles.qrDetailItem}>
+                <Text style={styles.qrDetailLabel}>STATUS</Text>
+                <Text
+                  style={[
+                    styles.qrDetailValue,
+                    {
+                      color:
+                        selectedTicket?.status === 'used' || selectedTicket?.is_used
+                          ? '#EF4444'
+                          : '#22C55E',
+                    },
+                  ]}
+                >
+                  {selectedTicket?.status === 'used' || selectedTicket?.is_used ? 'USED' : 'VALID'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.qrModalInstructions}>
+              Present this QR code at the event gate to scan and gain entry.
+            </Text>
+
+            <Button
+              title="Close Pass"
+              variant="secondary"
+              onPress={() => setSelectedTicket(null)}
+              style={styles.qrModalDoneBtn}
+            />
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1193,5 +1345,270 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 11,
     marginTop: 2,
+  },
+
+  // Attendee Tickets Section Styles
+  ticketsSection: {
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  ticketsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  ticketSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  ticketsSectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 0.8,
+  },
+  activePassBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.35)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: RADIUS.sm,
+  },
+  activePassBadgeText: {
+    color: '#22C55E',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  ticketsSectionSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  fullWalletLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(217, 38, 38, 0.08)',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 38, 38, 0.2)',
+  },
+  fullWalletLinkText: {
+    color: COLORS.accent,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  ticketSegmentRow: {
+    flexDirection: 'row',
+    backgroundColor: '#1E252D',
+    borderRadius: RADIUS.lg,
+    padding: 3,
+    gap: 4,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  ticketSegmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: RADIUS.md,
+  },
+  ticketSegmentBtnActive: {
+    backgroundColor: COLORS.accent,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  ticketSegmentText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  ticketSegmentTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  ticketsListWrapper: {
+    marginTop: SPACING.xs,
+  },
+  emptyTicketsCard: {
+    backgroundColor: '#1E252D',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    marginVertical: SPACING.xs,
+  },
+  emptyTicketsIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  emptyTicketsTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  emptyTicketsSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280,
+    marginBottom: SPACING.md,
+  },
+  exploreEventsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 10,
+    borderRadius: RADIUS.lg,
+  },
+  exploreEventsBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // QR Modal Styles
+  qrModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.lg,
+  },
+  qrModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#1E252D',
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  qrModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: SPACING.md,
+  },
+  qrModalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  qrModalBadgeText: {
+    color: '#22C55E',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  qrCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrModalEventTitle: {
+    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  qrModalTier: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginTop: 2,
+    marginBottom: SPACING.md,
+  },
+  qrGraphicContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: SPACING.lg,
+    borderRadius: RADIUS.xl,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    width: '100%',
+  },
+  qrGraphicBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrModalCode: {
+    color: '#0F1419',
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: SPACING.sm,
+    letterSpacing: 1,
+  },
+  qrDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  qrDetailItem: {
+    flex: 1,
+  },
+  qrDetailLabel: {
+    color: COLORS.textMuted,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  qrDetailValue: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  qrModalInstructions: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: SPACING.lg,
+  },
+  qrModalDoneBtn: {
+    width: '100%',
   },
 });
