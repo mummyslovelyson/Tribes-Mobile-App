@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { COLORS, RADIUS } from '../constants/theme';
 
 const logoAsset = require('../../assets/images/logo.png');

@@ -12,6 +12,7 @@ export default function EventCard({ event, onFavoriteChange }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [isFavorite, setIsFavorite] = React.useState(Boolean(event?.is_favorite || event?.isFavorite));
+  const [imgError, setImgError] = React.useState(false);
 
   if (!event) return null;
 
@@ -46,8 +47,6 @@ export default function EventCard({ event, onFavoriteChange }) {
   };
 
   const minPrice = Number(event.min_price || event.price || 0);
-
-  const [imgError, setImgError] = React.useState(false);
 
   return (
     <TouchableOpacity

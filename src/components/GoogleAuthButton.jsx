@@ -26,7 +26,6 @@ import {
   googleDiscovery,
   exchangeGoogleTokenWithFirebase,
   signInWithGoogleWebPopup,
-  signInWithGoogleWebRedirect,
   checkRedirectResult,
 } from '../config/firebase';
 
