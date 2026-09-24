@@ -40,13 +40,33 @@ const getBaseUrl = () => {
 
 export const API_BASE_URL = getBaseUrl();
 
-// Helper to rewrite localhost URLs in backend image responses to the phone-accessible LAN IP
+// Helper to rewrite localhost or relative URLs in backend image responses to the correct backend origin
 export const resolveImageUrl = (url) => {
   if (!url || typeof url !== 'string') return url;
+
+  const backendOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
+
+  // If already full https:// or non-local URL, return as is
+  if (url.startsWith('https://') || (url.startsWith('http://') && !url.includes('localhost') && !url.includes('127.0.0.1') && !url.includes('10.0.2.2'))) {
+    return url;
+  }
+
+  // If url is relative like /uploads/xyz.png
+  if (url.startsWith('/uploads/')) {
+    return `${backendOrigin}${url}`;
+  }
+
+  // If url was saved with localhost:5000, 127.0.0.1:5000, or 10.0.2.2:5000
+  if (/^http:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:5000)?\/uploads\//.test(url)) {
+    const path = url.replace(/^http:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:5000)?/, '');
+    return `${backendOrigin}${path}`;
+  }
+
   const host = getHostFromUrl(process.env.EXPO_PUBLIC_API_URL) || getHostFromExpo();
   if (host && host !== 'localhost' && host !== '127.0.0.1') {
     return url.replace('localhost:5000', `${host}:5000`).replace('127.0.0.1:5000', `${host}:5000`).replace('10.0.2.2:5000', `${host}:5000`);
   }
+
   return url;
 };
 
