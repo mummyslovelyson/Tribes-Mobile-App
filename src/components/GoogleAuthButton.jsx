@@ -216,12 +216,25 @@ export default function GoogleAuthButton({
           }
         } catch (popupErr) {
           console.warn('[GoogleAuth] Popup error:', popupErr?.code, popupErr?.message);
-          if (popupErr?.code === 'auth/popup-blocked') {
-            await signInWithGoogleWebRedirect();
+          setLoading(false);
+          // On mobile web, popup-blocked or third-party storage restrictions happen.
+          // Open the intuitive Google Account dialog directly to avoid storage-partitioned redirect crash.
+          if (
+            popupErr?.code === 'auth/popup-blocked' ||
+            popupErr?.code === 'auth/cancelled-popup-request' ||
+            popupErr?.code === 'auth/unauthorized-domain' ||
+            popupErr?.message?.includes('missing initial state')
+          ) {
+            setShowModal(true);
             return;
           }
           if (popupErr?.code === 'auth/popup-closed-by-user') {
-            setLoading(false);
+            return;
+          }
+          // If any other popup failure occurs on mobile web, provide modal fallback
+          const isMobileWeb = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (isMobileWeb) {
+            setShowModal(true);
             return;
           }
           throw popupErr;

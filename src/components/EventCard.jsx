@@ -47,6 +47,8 @@ export default function EventCard({ event, onFavoriteChange }) {
 
   const minPrice = Number(event.min_price || event.price || 0);
 
+  const [imgError, setImgError] = React.useState(false);
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -55,11 +57,12 @@ export default function EventCard({ event, onFavoriteChange }) {
     >
       {/* Event Image Banner */}
       <View style={styles.imageContainer}>
-        {event.banner_image ? (
+        {event.banner_image && !imgError ? (
           <Image
             source={{ uri: resolveImageUrl(event.banner_image) }}
             style={styles.image}
             resizeMode="cover"
+            onError={() => setImgError(true)}
           />
         ) : (
           <View style={styles.imageFallback}>

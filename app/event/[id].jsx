@@ -35,6 +35,7 @@ export default function EventDetailsScreen() {
   const [selectedTier, setSelectedTier] = useState(null);
   const [ticketQuantity, setTicketQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
@@ -286,8 +287,13 @@ export default function EventDetailsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Banner Poster */}
         <View style={styles.bannerContainer}>
-          {event.banner_image ? (
-            <Image source={{ uri: resolveImageUrl(event.banner_image) }} style={styles.banner} resizeMode="cover" />
+          {event.banner_image && !bannerError ? (
+            <Image
+              source={{ uri: resolveImageUrl(event.banner_image) }}
+              style={styles.banner}
+              resizeMode="cover"
+              onError={() => setBannerError(true)}
+            />
           ) : (
             <View style={styles.bannerFallback}>
               <Ionicons name="calendar-outline" size={48} color={COLORS.textMuted} />

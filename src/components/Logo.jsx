@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, Platform } from 'react-native';
 import { COLORS, RADIUS } from '../constants/theme';
+
+const logoAsset = require('../../assets/images/logo.png');
 
 export default function Logo({
   size = 'md',
@@ -8,6 +10,7 @@ export default function Logo({
   subtitle = 'LIVING THE MOMENT',
   style,
 }) {
+  const [imgError, setImgError] = useState(false);
   const sizeMap = {
     sm: {
       img: 32,
@@ -47,17 +50,44 @@ export default function Logo({
 
   return (
     <View style={[styles.container, { gap: config.gap }, style]}>
-      <Image
-        source={require('../../assets/images/logo.png')}
-        style={{
-          width: config.img,
-          height: config.img,
-          borderRadius: config.radius,
-          borderWidth: 1,
-          borderColor: COLORS.border,
-        }}
-        resizeMode="cover"
-      />
+      {!imgError ? (
+        <Image
+          source={logoAsset}
+          onError={() => setImgError(true)}
+          style={{
+            width: config.img,
+            height: config.img,
+            borderRadius: config.radius,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+          }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View
+          style={{
+            width: config.img,
+            height: config.img,
+            borderRadius: config.radius,
+            backgroundColor: '#2A1515',
+            borderWidth: 1,
+            borderColor: COLORS.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontWeight: '900',
+              fontSize: Math.max(10, Math.round(config.img * 0.32)),
+              letterSpacing: 0.5,
+            }}
+          >
+            T&amp;C
+          </Text>
+        </View>
+      )}
       {showText && (
         <View style={styles.textColumn}>
           <View style={styles.brandRow}>
