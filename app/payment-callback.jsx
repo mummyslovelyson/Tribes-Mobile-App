@@ -19,14 +19,14 @@ export default function PaymentCallbackScreen() {
   const router = useRouter();
 
   const reference = params.reference || params.trxref || '';
-  const [verifying, setVerifying] = useState(true);
-  const [verified, setVerified] = useState(false);
+  const [verifying, setVerifying] = useState(() => Boolean(reference));
+  const [verified, setVerified] = useState(() => !reference);
   const [errorMessage, setErrorMessage] = useState('');
 
   const runVerification = useCallback(async () => {
     if (!reference) {
+      setVerified(true);
       setVerifying(false);
-      setVerified(true); // Proceed anyway if returned without ref
       return;
     }
 
@@ -43,7 +43,6 @@ export default function PaymentCallbackScreen() {
         setVerified(true);
       } catch (simErr) {
         console.warn('[PaymentCallback] simulatePaymentApi notice:', simErr.message);
-        // Even if verify returns an error, Paystack already confirmed via bridge
         setVerified(true);
       }
     } finally {
@@ -52,8 +51,34 @@ export default function PaymentCallbackScreen() {
   }, [reference]);
 
   useEffect(() => {
-    runVerification();
-  }, [runVerification]);
+    if (!reference) return;
+
+    let isMounted = true;
+
+    const performCheck = async () => {
+      try {
+        await verifyPaymentApi(reference);
+        if (isMounted) setVerified(true);
+      } catch (err) {
+        console.warn('[PaymentCallback] verifyPaymentApi notice:', err.message);
+        try {
+          await simulatePaymentApi(reference);
+          if (isMounted) setVerified(true);
+        } catch (simErr) {
+          console.warn('[PaymentCallback] simulatePaymentApi notice:', simErr.message);
+          if (isMounted) setVerified(true);
+        }
+      } finally {
+        if (isMounted) setVerifying(false);
+      }
+    };
+
+    performCheck();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reference]);
 
   // Auto-navigate to tickets after brief confirmation
   useEffect(() => {

@@ -132,19 +132,22 @@ client.interceptors.response.use(
         }
       } catch (refreshErr) {
         console.warn('[API Client] Refresh token failed:', refreshErr?.message);
-      }
-
-      try {
-        await AsyncStorage.multiRemove([
-          'tc_token',
-          'tc_refresh',
-          'tc_user',
-          '@auth_token',
-          '@refresh_token',
-          '@auth_user',
-        ]);
-      } catch (err) {
-        console.warn('[API Client] Error clearing tokens on 401:', err);
+        // Only clear tokens if the refresh token is genuinely rejected as invalid/expired (400, 401, 403)
+        const isAuthRejection = refreshErr?.response?.status && [400, 401, 403].includes(refreshErr.response.status);
+        if (isAuthRejection) {
+          try {
+            await AsyncStorage.multiRemove([
+              'tc_token',
+              'tc_refresh',
+              'tc_user',
+              '@auth_token',
+              '@refresh_token',
+              '@auth_user',
+            ]);
+          } catch (clearErr) {
+            console.warn('[API Client] Error clearing tokens on 401:', clearErr);
+          }
+        }
       }
     }
     return Promise.reject(error);
