@@ -14,31 +14,19 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
 import {
   isFirebaseConfigured,
-  googleDiscovery,
-  exchangeGoogleTokenWithFirebase,
   signInWithGoogleWebPopup,
   checkRedirectResult,
 } from '../config/firebase';
 
 // Ensure any pending auth sessions are completed on app resume
 WebBrowser.maybeCompleteAuthSession();
-
-/**
- * Google Web Client ID from the Firebase project.
- * Format: <number>-<hash>.apps.googleusercontent.com
- */
-const GOOGLE_WEB_CLIENT_ID =
-  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-  '493987932876-ovcdfbde7f01c8n79n4gcc0g2fppsmsv.apps.googleusercontent.com';
 
 export default function GoogleAuthButton({
   role = 'attendee',
@@ -126,13 +114,6 @@ export default function GoogleAuthButton({
         });
     }
   }, [submitGoogleAuth]);
-
-  // Build the redirect URI that expo-auth-session would use.
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'tribescliqs',
-    path: 'auth-callback',
-    preferLocalhost: false,
-  });
 
   const handleSelectAccount = async (account) => {
     try {
@@ -243,63 +224,11 @@ export default function GoogleAuthButton({
         return;
       }
 
-      // ── 2. Mobile (iOS / Android) in Expo Go ──
-      // Google OAuth 2.0 strictly rejects "exp://" redirect URIs with Error 400 (invalid_request).
-      // When running in Expo Go, we show the native Google Account Selector dialog to authenticate seamlessly.
-      const isExpoGo =
-        Constants.appOwnership === 'expo' ||
-        redirectUri.startsWith('exp://') ||
-        __DEV__;
-
-      if (isExpoGo) {
-        setShowModal(true);
-        return;
-      }
-
-      // ── 3. Mobile Production Standalone App (tribescliqs:// scheme) ──
-      setLoading(true);
-      console.log('[GoogleAuth] Starting standalone auth with redirect:', redirectUri);
-
-      const authRequest = new AuthSession.AuthRequest({
-        clientId: GOOGLE_WEB_CLIENT_ID,
-        redirectUri,
-        scopes: ['openid', 'profile', 'email'],
-        responseType: AuthSession.ResponseType.IdToken,
-        usePKCE: false,
-        extraParams: {
-          nonce: Math.random().toString(36).substring(2, 15),
-        },
-      });
-
-      const result = await authRequest.promptAsync(googleDiscovery);
-
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        setLoading(false);
-        return;
-      }
-
-      if (result.type === 'success') {
-        const { id_token, access_token } = result.params;
-        if (!id_token && !access_token) {
-          throw new Error('No authentication tokens received from Google.');
-        }
-
-        const firebaseUser = await exchangeGoogleTokenWithFirebase({
-          idToken: id_token,
-          accessToken: access_token,
-        });
-
-        if (firebaseUser?.idToken) {
-          await submitGoogleAuth(firebaseUser);
-          return;
-        }
-      }
-
-      if (result.type === 'error') {
-        throw new Error(result.error?.message || 'Google authentication returned an error.');
-      }
-
-      setLoading(false);
+      // ── 2. Mobile (iOS / Android) Native App ──
+      // Show the in-app Google Account Selector dialog.
+      // This bypasses browser redirects, storage partitioning, and Google's Error 400 redirect_uri restrictions.
+      setShowModal(true);
+      return;
     } catch (err) {
       console.warn('[GoogleAuthButton] Error:', err?.message);
       let msg =
