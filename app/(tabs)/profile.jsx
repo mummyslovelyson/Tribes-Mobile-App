@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,7 +40,6 @@ export default function ProfileScreen() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [ticketCount, setTicketCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
-  const [latestTicket, setLatestTicket] = useState(null);
   const [loadingTickets, setLoadingTickets] = useState(true);
 
   // Live Auto-Refresh Dashboard on screen focus
@@ -67,7 +67,6 @@ export default function ProfileScreen() {
             setActiveTickets(activeList);
             setPastTickets(pastList);
             setTicketCount(activeList.length);
-            setLatestTicket(activeList[0] || list[0] || null);
           }
 
           if (ordersData.status === 'fulfilled') {
@@ -449,7 +448,12 @@ export default function ProfileScreen() {
               )}
 
               {/* Tickets Render */}
-              {displayedTickets.length > 0 ? (
+              {loadingTickets ? (
+                <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="small" color="#F59E0B" />
+                  <Text style={{ marginTop: 8, fontSize: 12, color: COLORS.textMuted }}>Loading your passes...</Text>
+                </View>
+              ) : displayedTickets.length > 0 ? (
                 <View style={styles.ticketsListWrapper}>
                   {displayedTickets.map((t) => (
                     <TicketCard
