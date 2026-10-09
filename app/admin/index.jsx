@@ -511,7 +511,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               >
                 <Ionicons
                   name={tab.icon}
-                  size={17}
+                  size={19}
                   color={isSelected ? '#FFFFFF' : COLORS.textMuted}
                 />
                 <Text
@@ -1267,15 +1267,15 @@ const styles = StyleSheet.create({
   },
   tabsContent: {
     paddingHorizontal: SPACING.lg,
-    paddingVertical: 12,
-    gap: 10,
+    paddingVertical: 14,
+    gap: 12,
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.card,
     borderWidth: 1,
@@ -1286,13 +1286,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   tabButtonText: {
-    fontSize: 13.5,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.textSecondary,
   },
   tabButtonTextActive: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '900',
   },
   scroll: {
     flex: 1,

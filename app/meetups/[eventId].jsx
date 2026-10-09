@@ -203,7 +203,7 @@ export default function EventMeetupsScreen() {
         >
           <Ionicons
             name="people-outline"
-            size={18}
+            size={20}
             color={activeTab === 'meetups' ? COLORS.primary : COLORS.textMuted}
             style={{ marginRight: 8 }}
           />
@@ -218,7 +218,7 @@ export default function EventMeetupsScreen() {
         >
           <Ionicons
             name="chatbubbles-outline"
-            size={18}
+            size={20}
             color={activeTab === 'discussions' ? COLORS.primary : COLORS.textMuted}
             style={{ marginRight: 8 }}
           />
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    padding: 6,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -511,20 +511,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: RADIUS.sm,
+    paddingVertical: 14,
+    borderRadius: RADIUS.md,
   },
   tabItemActive: {
     backgroundColor: COLORS.card,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.textMuted,
   },
   tabTextActive: {
     color: COLORS.text,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   container: {
     flex: 1,

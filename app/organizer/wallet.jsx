@@ -480,29 +480,29 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: 4,
+    borderRadius: RADIUS.lg,
+    padding: 6,
     marginBottom: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: RADIUS.md - 2,
+    borderRadius: RADIUS.md,
   },
   tabItemActive: {
     backgroundColor: COLORS.card,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.textMuted,
   },
   tabTextActive: {
     color: COLORS.text,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   historyCard: {
     flexDirection: 'row',

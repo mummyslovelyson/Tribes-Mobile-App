@@ -159,26 +159,26 @@ export default function GoogleAuthButton({
 
   const handleGoogleSignIn = async () => {
     try {
-      // ── 1. Web Platform: Firebase Web Popup with Redirect Fallback ──
+      // Check if running on mobile device (Native iOS/Android, Expo Go, or Mobile Web browser)
+      const isMobileDevice =
+        Platform.OS !== 'web' ||
+        (typeof navigator !== 'undefined' &&
+          /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+
+      // ── 1. Mobile Environments: Always use the in-app Google Account Selector ──
+      // This bypasses Firebase's broken signInWithRedirect, storage partitioning,
+      // and the "missing initial state" error on mobile Chrome/Safari.
+      if (isMobileDevice) {
+        setShowModal(true);
+        return;
+      }
+
+      // ── 2. Desktop Web Platform: Firebase Web Popup with In-App Fallback ──
       if (Platform.OS === 'web' && isFirebaseConfigured) {
         const isInsideIframe = typeof window !== 'undefined' && window.self !== window.top;
 
         if (isInsideIframe) {
-          Alert.alert(
-            'Browser Simulator Detected',
-            'Google OAuth restricts authentication inside embedded iframes for security. Please open the app in a regular browser tab or on a mobile device.',
-            [
-              {
-                text: 'Open in New Tab',
-                onPress: () => {
-                  if (typeof window !== 'undefined') {
-                    window.open(window.location.href, '_blank');
-                  }
-                },
-              },
-              { text: 'Cancel', style: 'cancel' },
-            ],
-          );
+          setShowModal(true);
           return;
         }
 
@@ -200,36 +200,17 @@ export default function GoogleAuthButton({
         } catch (popupErr) {
           console.warn('[GoogleAuth] Popup error:', popupErr?.code, popupErr?.message);
           setLoading(false);
-          // On mobile web, popup-blocked or third-party storage restrictions happen.
-          // Open the intuitive Google Account dialog directly to avoid storage-partitioned redirect crash.
-          if (
-            popupErr?.code === 'auth/popup-blocked' ||
-            popupErr?.code === 'auth/cancelled-popup-request' ||
-            popupErr?.code === 'auth/unauthorized-domain' ||
-            popupErr?.message?.includes('missing initial state')
-          ) {
-            setShowModal(true);
-            return;
-          }
-          if (popupErr?.code === 'auth/popup-closed-by-user') {
-            return;
-          }
-          // If any other popup failure occurs on mobile web, provide modal fallback
-          const isMobileWeb = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-          if (isMobileWeb) {
-            setShowModal(true);
-            return;
-          }
-          throw popupErr;
+          // Whenever popup fails, is blocked, or encounters storage partitioning,
+          // open the in-app Google Account dialog directly.
+          setShowModal(true);
+          return;
         }
 
         setLoading(false);
         return;
       }
 
-      // ── 2. Mobile (iOS / Android) Native App ──
-      // Show the in-app Google Account Selector dialog.
-      // This bypasses browser redirects, storage partitioning, and Google's Error 400 redirect_uri restrictions.
+      // Default fallback: show in-app account dialog
       setShowModal(true);
       return;
     } catch (err) {
