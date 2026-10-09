@@ -10,7 +10,6 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +40,8 @@ export default function GoogleAuthButton({
 
   // Expo Go Google Sign-In Selector state
   const [showModal, setShowModal] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(true);
@@ -116,10 +117,9 @@ export default function GoogleAuthButton({
   }, [submitGoogleAuth]);
 
   const handleSelectAccount = async (account) => {
+    setModalLoading(true);
+    setModalError('');
     try {
-      setLoading(true);
-      setShowModal(false);
-
       // Save to recent accounts list
       const updated = [
         account,
@@ -135,23 +135,26 @@ export default function GoogleAuthButton({
         picture: account.picture || null,
         uid: `google_${account.email.replace(/[^a-zA-Z0-9]/g, '_')}`,
       });
+      setShowModal(false);
     } catch (err) {
       console.warn('[GoogleAuthButton] Account select error:', err?.message);
-      const msg = err.response?.data?.message || err?.message || 'Google sign-in failed.';
+      const msg = err.response?.data?.message || err?.message || 'Google sign-in failed. Please verify connection and try again.';
+      setModalError(msg);
       if (onError) onError(msg);
-      else Alert.alert('Authentication Error', msg);
     } finally {
+      setModalLoading(false);
       setLoading(false);
     }
   };
 
   const handleCustomSubmit = () => {
-    if (!customEmail || !customEmail.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid Google email address.');
+    const trimmed = customEmail.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      setModalError('Please enter a valid Google email address.');
       return;
     }
-    const name = customName.trim() || customEmail.split('@')[0];
-    handleSelectAccount({ email: customEmail.trim().toLowerCase(), name });
+    const name = customName.trim() || trimmed.split('@')[0];
+    handleSelectAccount({ email: trimmed.toLowerCase(), name });
   };
 
   const handleGoogleSignIn = async () => {
@@ -270,128 +273,158 @@ export default function GoogleAuthButton({
         visible={showModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={() => {
+          if (!modalLoading) setShowModal(false);
+        }}
       >
-        <TouchableWithoutFeedback onPress={() => setShowModal(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={styles.modalContent}
-              >
-                {/* Header */}
-                <View style={styles.modalHeader}>
-                  <View style={styles.headerTitleRow}>
-                    <View style={styles.googleModalIcon}>
-                      <Ionicons name="logo-google" size={20} color="#EA4335" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.modalTitle}>Sign in with Google</Text>
-                      <Text style={styles.modalSubtitle}>
-                        Choose an account to continue to Tribes &amp; Cliqs
-                      </Text>
-                    </View>
+        <View style={styles.modalOverlay}>
+          {/* Backdrop dismissal - touches outside modal */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              if (!modalLoading) setShowModal(false);
+            }}
+          />
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalContent}
+          >
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.headerTitleRow}>
+                <View style={styles.googleModalIcon}>
+                  <Ionicons name="logo-google" size={20} color="#EA4335" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Sign in with Google</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Choose an account to continue to Tribes &amp; Cliqs
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowModal(false)}
+                  disabled={modalLoading}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* In-Modal Error Banner */}
+            {modalError ? (
+              <View style={styles.modalErrorBanner}>
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Text style={styles.modalErrorText}>{modalError}</Text>
+              </View>
+            ) : null}
+
+            {/* Account List */}
+            <ScrollView style={styles.accountList} bounces={false} keyboardShouldPersistTaps="handled">
+              {recentAccounts.map((account, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.accountItem}
+                  onPress={() => handleSelectAccount(account)}
+                  disabled={modalLoading}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.accountAvatar}>
+                    <Text style={styles.avatarLetter}>
+                      {(account.name || account.email)[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName} numberOfLines={1}>
+                      {account.name || account.email.split('@')[0]}
+                    </Text>
+                    <Text style={styles.accountEmail} numberOfLines={1}>
+                      {account.email}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              ))}
+
+              {/* Use another account section */}
+              {!showCustomInput ? (
+                <TouchableOpacity
+                  style={styles.addAccountRow}
+                  onPress={() => setShowCustomInput(true)}
+                  disabled={modalLoading}
+                >
+                  <View style={styles.addAccountIcon}>
+                    <Ionicons name="person-add-outline" size={16} color={COLORS.accent} />
+                  </View>
+                  <Text style={styles.addAccountText}>Use another Google account</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.customInputContainer}>
+                  <Text style={styles.inputLabel}>Google Email Address</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="you@gmail.com"
+                    placeholderTextColor={COLORS.textSecondary}
+                    value={customEmail}
+                    onChangeText={(val) => {
+                      setCustomEmail(val);
+                      if (modalError) setModalError('');
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!modalLoading}
+                  />
+
+                  <Text style={[styles.inputLabel, { marginTop: SPACING.sm }]}>
+                    Display Name (Optional)
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="e.g. Adutwum Anita"
+                    placeholderTextColor={COLORS.textSecondary}
+                    value={customName}
+                    onChangeText={setCustomName}
+                    editable={!modalLoading}
+                  />
+
+                  <View style={styles.actionRow}>
+                    {recentAccounts.length > 0 && (
+                      <TouchableOpacity
+                        style={styles.cancelBtn}
+                        onPress={() => setShowCustomInput(false)}
+                        disabled={modalLoading}
+                      >
+                        <Text style={styles.cancelBtnText}>Back</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
-                      onPress={() => setShowModal(false)}
-                      style={styles.closeBtn}
+                      style={[styles.continueBtn, modalLoading && { opacity: 0.7 }]}
+                      onPress={handleCustomSubmit}
+                      disabled={modalLoading}
                     >
-                      <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                      {modalLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.continueBtnText}>Sign In</Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
+              )}
+            </ScrollView>
 
-                {/* Account List */}
-                <ScrollView style={styles.accountList} bounces={false}>
-                  {recentAccounts.map((account, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.accountItem}
-                      onPress={() => handleSelectAccount(account)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.accountAvatar}>
-                        <Text style={styles.avatarLetter}>
-                          {(account.name || account.email)[0].toUpperCase()}
-                        </Text>
-                      </View>
-                      <View style={styles.accountInfo}>
-                        <Text style={styles.accountName} numberOfLines={1}>
-                          {account.name || account.email.split('@')[0]}
-                        </Text>
-                        <Text style={styles.accountEmail} numberOfLines={1}>
-                          {account.email}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                  ))}
-
-                  {/* Use another account section */}
-                  {!showCustomInput ? (
-                    <TouchableOpacity
-                      style={styles.addAccountRow}
-                      onPress={() => setShowCustomInput(true)}
-                    >
-                      <View style={styles.addAccountIcon}>
-                        <Ionicons name="person-add-outline" size={16} color={COLORS.accent} />
-                      </View>
-                      <Text style={styles.addAccountText}>Use another Google account</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.customInputContainer}>
-                      <Text style={styles.inputLabel}>Google Email Address</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="you@gmail.com"
-                        placeholderTextColor={COLORS.textSecondary}
-                        value={customEmail}
-                        onChangeText={setCustomEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        autoFocus
-                      />
-
-                      <Text style={[styles.inputLabel, { marginTop: SPACING.sm }]}>
-                        Display Name (Optional)
-                      </Text>
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="e.g. Adutwum Anita"
-                        placeholderTextColor={COLORS.textSecondary}
-                        value={customName}
-                        onChangeText={setCustomName}
-                      />
-
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity
-                          style={styles.cancelBtn}
-                          onPress={() => setShowCustomInput(false)}
-                        >
-                          <Text style={styles.cancelBtnText}>Back</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.continueBtn}
-                          onPress={handleCustomSubmit}
-                        >
-                          <Text style={styles.continueBtnText}>Sign In</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                </ScrollView>
-
-                {/* Secure Badge Footer */}
-                <View style={styles.modalFooter}>
-                  <Ionicons name="shield-checkmark-outline" size={13} color="#22C55E" />
-                  <Text style={styles.modalFooterText}>
-                    Google OAuth Verified &amp; Encrypted Session
-                  </Text>
-                </View>
-              </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+            {/* Secure Badge Footer */}
+            <View style={styles.modalFooter}>
+              <Ionicons name="shield-checkmark-outline" size={13} color="#22C55E" />
+              <Text style={styles.modalFooterText}>
+                Google OAuth Verified &amp; Encrypted Session
+              </Text>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </>
   );
@@ -450,6 +483,24 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modalErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm + 2,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  modalErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
   },
   headerTitleRow: {
     flexDirection: 'row',
