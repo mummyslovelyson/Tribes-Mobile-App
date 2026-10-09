@@ -269,16 +269,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   categoriesWrapper: {
-    paddingVertical: SPACING.sm + 2,
+    paddingVertical: SPACING.md,
   },
   categoriesContent: {
     paddingHorizontal: SPACING.lg,
-    gap: SPACING.sm,
+    gap: 10,
   },
   categoryPill: {
-    paddingHorizontal: SPACING.md + 2,
-    paddingVertical: SPACING.xs + 3,
-    borderRadius: RADIUS.md,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: RADIUS.lg,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   categoryPillText: {
     color: COLORS.textMuted,
-    fontSize: 12,
+    fontSize: 13.5,
     fontWeight: '600',
   },
   categoryPillTextActive: {

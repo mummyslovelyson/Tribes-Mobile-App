@@ -203,9 +203,9 @@ export default function EventMeetupsScreen() {
         >
           <Ionicons
             name="people-outline"
-            size={16}
+            size={18}
             color={activeTab === 'meetups' ? COLORS.primary : COLORS.textMuted}
-            style={{ marginRight: 6 }}
+            style={{ marginRight: 8 }}
           />
           <Text style={[styles.tabText, activeTab === 'meetups' && styles.tabTextActive]}>
             Meetups ({meetups.length})
@@ -218,9 +218,9 @@ export default function EventMeetupsScreen() {
         >
           <Ionicons
             name="chatbubbles-outline"
-            size={16}
+            size={18}
             color={activeTab === 'discussions' ? COLORS.primary : COLORS.textMuted}
-            style={{ marginRight: 6 }}
+            style={{ marginRight: 8 }}
           />
           <Text style={[styles.tabText, activeTab === 'discussions' && styles.tabTextActive]}>
             Cliq Board ({discussions.length})
@@ -511,19 +511,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: RADIUS.xs,
+    paddingVertical: 12,
+    borderRadius: RADIUS.sm,
   },
   tabItemActive: {
     backgroundColor: COLORS.card,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.textMuted,
   },
   tabTextActive: {
     color: COLORS.text,
+    fontWeight: '800',
   },
   container: {
     flex: 1,

@@ -17,14 +17,18 @@ export default function TabLayout() {
           backgroundColor: COLORS.surface,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 86 : 64,
+          height: Platform.OS === 'ios' ? 94 : 76,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 12,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12.5,
           fontWeight: '700',
-          marginTop: 2,
+          marginTop: 3,
+          letterSpacing: 0.2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 3,
         },
       }}
     >
@@ -35,7 +39,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'compass' : 'compass-outline'}
-              size={22}
+              size={focused ? 27 : 25}
               color={focused ? COLORS.primary : color}
             />
           ),
@@ -49,7 +53,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'ticket' : 'ticket-outline'}
-              size={22}
+              size={focused ? 27 : 25}
               color={focused ? COLORS.primary : color}
             />
           ),
@@ -63,7 +67,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
-              size={22}
+              size={focused ? 27 : 25}
               color={focused ? COLORS.primary : color}
             />
           ),
@@ -78,7 +82,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
-              size={22}
+              size={focused ? 27 : 25}
               color={focused ? '#10B981' : color}
             />
           ),
@@ -92,7 +96,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
-              size={22}
+              size={focused ? 27 : 25}
               color={focused ? COLORS.primary : color}
             />
           ),

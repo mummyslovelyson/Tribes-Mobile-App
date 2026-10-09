@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.md,
     padding: 4,
     marginBottom: SPACING.lg,
     borderWidth: 1,
@@ -845,20 +845,21 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: RADIUS.sm - 2,
+    borderRadius: RADIUS.md - 2,
   },
   tabItemActive: {
     backgroundColor: COLORS.card,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.textMuted,
   },
   tabTextActive: {
     color: COLORS.text,
+    fontWeight: '800',
   },
   tabContent: {
     paddingBottom: 40,
@@ -868,8 +869,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   filterPill: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -881,7 +882,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   filterPillText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.textMuted,
   },

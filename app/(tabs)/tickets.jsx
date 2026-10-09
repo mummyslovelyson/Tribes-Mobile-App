@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    padding: 3,
+    padding: 4,
     marginHorizontal: SPACING.lg,
     marginVertical: SPACING.md,
     borderWidth: 1,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   },
   segmentBtn: {
     flex: 1,
-    paddingVertical: SPACING.sm + 2,
+    paddingVertical: 12,
     alignItems: 'center',
     borderRadius: RADIUS.md,
   },
@@ -395,12 +395,13 @@ const styles = StyleSheet.create({
   },
   segmentText: {
     color: COLORS.textMuted,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
   },
   segmentTextActive: {
     color: COLORS.background,
     fontWeight: '800',
+    fontSize: 14,
   },
   listContent: {
     paddingHorizontal: SPACING.lg,
