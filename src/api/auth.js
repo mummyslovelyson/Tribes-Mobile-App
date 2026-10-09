@@ -53,10 +53,12 @@ export const forgotPasswordApi = async (email) => {
 };
 
 export const resetPasswordApi = async ({ email, otp, token, newPassword }) => {
+  const resetCode = otp || token;
   const res = await client.post('/auth/reset-password', {
     email: email?.trim().toLowerCase(),
-    otp,
-    token,
+    otp: resetCode,
+    code: resetCode,
+    token: resetCode,
     password: newPassword,
   });
   return res.data;

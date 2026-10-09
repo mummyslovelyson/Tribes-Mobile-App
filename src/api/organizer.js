@@ -60,6 +60,16 @@ export const getAttendeesApi = async (eventId) => {
   return res.data;
 };
 
+export const getOrganizerRefundRequestsApi = async () => {
+  const res = await client.get('/organizer/refund-requests');
+  return res.data;
+};
+
+export const respondToRefundRequestApi = async (refundId, data) => {
+  const res = await client.post(`/organizer/refund-requests/${refundId}/respond`, data);
+  return res.data;
+};
+
 export default {
   getOrganizerDashboardApi,
   getOrganizerEventsApi,
@@ -73,4 +83,6 @@ export default {
   getWithdrawalsApi,
   requestWithdrawalApi,
   getAttendeesApi,
+  getOrganizerRefundRequestsApi,
+  respondToRefundRequestApi,
 };

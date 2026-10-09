@@ -8,6 +8,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -19,7 +23,10 @@ import {
   unpublishEventApi,
   deleteEventApi,
   getWalletBalanceApi,
+  getOrganizerRefundRequestsApi,
+  respondToRefundRequestApi,
 } from '../../src/api/organizer';
+import { getPolicyTitle } from '../../src/constants/refundPolicy';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
 
@@ -29,7 +36,7 @@ export default function OrganizerDashboardScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'events' | 'wallet'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'events' | 'wallet' | 'refunds'
 
   // Dashboard Stats
   const [stats, setStats] = useState({
@@ -50,12 +57,20 @@ export default function OrganizerDashboardScreen() {
     totalRevenue: 0,
   });
 
+  // Refunds list & response modals
+  const [refundRequests, setRefundRequests] = useState([]);
+  const [declineModalVisible, setDeclineModalVisible] = useState(false);
+  const [selectedRefundForDecline, setSelectedRefundForDecline] = useState(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [respondingRefund, setRespondingRefund] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
-      const [dashRes, eventsRes, walletRes] = await Promise.allSettled([
+      const [dashRes, eventsRes, walletRes, refundsRes] = await Promise.allSettled([
         getOrganizerDashboardApi(),
         getOrganizerEventsApi(),
         getWalletBalanceApi(),
+        getOrganizerRefundRequestsApi(),
       ]);
 
       if (dashRes.status === 'fulfilled' && dashRes.value) {
@@ -81,6 +96,11 @@ export default function OrganizerDashboardScreen() {
           totalRevenue: Number(w?.totalRevenue || w?.total_revenue || 0),
         });
       }
+
+      if (refundsRes.status === 'fulfilled' && refundsRes.value) {
+        const reqs = refundsRes.value?.refundRequests || refundsRes.value?.data || (Array.isArray(refundsRes.value) ? refundsRes.value : []);
+        setRefundRequests(Array.isArray(reqs) ? reqs : []);
+      }
     } catch (err) {
       console.warn('[OrganizerDashboard] Load error:', err?.message || err);
     } finally {
@@ -88,6 +108,61 @@ export default function OrganizerDashboardScreen() {
       setRefreshing(false);
     }
   }, []);
+
+  const handleAuthorizeRefund = (refund) => {
+    Alert.alert(
+      'Authorize Refund (Clause 1)',
+      `Are you sure you want to authorize refund of GH₵ ${Number(refund.amount || 0).toFixed(2)} for ${refund.buyer_name || 'Buyer'}? Under Clause 1, funds will be returned and tickets will be invalidated.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm & Refund',
+          style: 'default',
+          onPress: async () => {
+            try {
+              const res = await respondToRefundRequestApi(refund.id, { action: 'authorize' });
+              Alert.alert('Refund Authorized', res?.message || 'Refund successfully processed.');
+              loadData();
+            } catch (err) {
+              const msg = err.response?.data?.message || 'Failed to authorize refund.';
+              Alert.alert('Authorization Failed', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOpenDeclineModal = (refund) => {
+    setSelectedRefundForDecline(refund);
+    setDeclineReason('');
+    setDeclineModalVisible(true);
+  };
+
+  const handleConfirmDecline = async () => {
+    if (!selectedRefundForDecline) return;
+    if (!declineReason.trim()) {
+      Alert.alert('Reason Required', 'Please provide a clear justification for declining this refund request.');
+      return;
+    }
+    setRespondingRefund(true);
+    try {
+      const res = await respondToRefundRequestApi(selectedRefundForDecline.id, {
+        action: 'decline',
+        responseNote: declineReason.trim(),
+      });
+      Alert.alert('Request Declined', res?.message || 'Refund request has been declined.');
+      setDeclineModalVisible(false);
+      setSelectedRefundForDecline(null);
+      setDeclineReason('');
+      loadData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to decline refund request.';
+      Alert.alert('Action Failed', msg);
+    } finally {
+      setRespondingRefund(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -301,6 +376,24 @@ export default function OrganizerDashboardScreen() {
               Payouts & Wallet
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabItem, activeTab === 'refunds' && styles.tabItemActive]}
+            onPress={() => setActiveTab('refunds')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={[styles.tabText, activeTab === 'refunds' && styles.tabTextActive]}>
+                Refunds
+              </Text>
+              {refundRequests.filter((r) => (r.status || '').toLowerCase() === 'pending').length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {refundRequests.filter((r) => (r.status || '').toLowerCase() === 'pending').length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Content based on activeTab */}
@@ -434,7 +527,7 @@ export default function OrganizerDashboardScreen() {
               ))
             )}
           </View>
-        ) : (
+        ) : activeTab === 'wallet' ? (
           <View style={styles.tabContent}>
             {/* Wallet Overview Box */}
             <View style={styles.walletCard}>
@@ -461,8 +554,187 @@ export default function OrganizerDashboardScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        ) : (
+          /* Refunds Tab (Policy Clause 5 SLA) */
+          <View style={styles.tabContent}>
+            <View style={styles.refundPolicyNotice}>
+              <Ionicons name="time" size={16} color="#F59E0B" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.refundPolicyNoticeTitle}>24-Hour Review SLA (Policy Clause 5)</Text>
+                <Text style={styles.refundPolicyNoticeDesc}>
+                  Under TRIBESANDCLIQS Policy, you have 1 day (24 hours) from submission to authorize or decline refund requests. Overdue requests are eligible for unilateral platform resolution.
+                </Text>
+              </View>
+            </View>
+
+            {loading ? (
+              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
+            ) : refundRequests.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="shield-checkmark-outline" size={48} color={COLORS.textMuted} />
+                <Text style={styles.emptyText}>No refund requests</Text>
+                <Text style={styles.emptySubText}>
+                  Any attendee refund requests submitted for your events will appear here with a 24-hour review countdown.
+                </Text>
+              </View>
+            ) : (
+              refundRequests.map((req) => {
+                const isPending = (req.status || '').toLowerCase() === 'pending';
+                const isApproved = (req.status || '').toLowerCase() === 'approved';
+
+                let slaText = '24h SLA Active';
+                let isExpired = false;
+                if (req.organizer_deadline) {
+                  const msLeft = new Date(req.organizer_deadline) - new Date();
+                  const hoursLeft = Math.round(msLeft / (1000 * 60 * 60));
+                  if (hoursLeft <= 0) {
+                    slaText = 'SLA Expired (Clause 5 Platform Resolution Eligible)';
+                    isExpired = true;
+                  } else {
+                    slaText = `${hoursLeft}h remaining to review`;
+                  }
+                }
+
+                return (
+                  <View key={req.id} style={[styles.refundCard, isPending && styles.refundCardPending]}>
+                    <View style={styles.refundHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.refundOrderTitle}>{req.event_title || 'Event'}</Text>
+                        <Text style={styles.refundBuyer}>
+                          {req.buyer_name || 'Attendee'} ({req.buyer_email || '—'})
+                        </Text>
+                      </View>
+                      <View style={[
+                        styles.refundBadge,
+                        isPending ? styles.refundBadgePending : isApproved ? styles.refundBadgeApproved : styles.refundBadgeDeclined
+                      ]}>
+                        <Text style={[
+                          styles.refundBadgeText,
+                          isPending ? styles.refundBadgeTextPending : isApproved ? styles.refundBadgeTextApproved : styles.refundBadgeTextDeclined
+                        ]}>
+                          {(req.status || 'PENDING').toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.refundBody}>
+                      <View style={styles.refundRow}>
+                        <Text style={styles.refundLabel}>Refund Amount:</Text>
+                        <Text style={styles.refundAmount}>GH₵ {Number(req.amount || 0).toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.refundRow}>
+                        <Text style={styles.refundLabel}>Statutory Ground:</Text>
+                        <Text style={styles.refundGround}>{getPolicyTitle(req.policy_circumstance || req.clause_number)}</Text>
+                      </View>
+                      {req.reason ? (
+                        <View style={styles.refundReasonBox}>
+                          <Text style={styles.refundReasonLabel}>Attendee Reason:</Text>
+                          <Text style={styles.refundReasonText}>{req.reason}</Text>
+                        </View>
+                      ) : null}
+
+                      {isPending && (
+                        <View style={[styles.slaTimerBox, isExpired && styles.slaTimerBoxExpired]}>
+                          <Ionicons name="stopwatch-outline" size={13} color={isExpired ? '#EF4444' : '#F59E0B'} />
+                          <Text style={[styles.slaTimerText, isExpired && { color: '#EF4444' }]}>
+                            {slaText}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {isPending && (
+                      <View style={styles.refundActionRow}>
+                        <TouchableOpacity
+                          style={styles.declineBtn}
+                          onPress={() => handleOpenDeclineModal(req)}
+                        >
+                          <Ionicons name="close" size={14} color="#EF4444" />
+                          <Text style={styles.declineBtnText}>Decline</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.authorizeBtn}
+                          onPress={() => handleAuthorizeRefund(req)}
+                        >
+                          <Ionicons name="checkmark" size={14} color="#0E1216" />
+                          <Text style={styles.authorizeBtnText}>Authorize (Clause 1)</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </View>
         )}
       </ScrollView>
+
+      {/* ── Modal: Decline Refund Request ── */}
+      <Modal
+        visible={declineModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDeclineModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="close-circle" size={18} color="#EF4444" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Decline Refund</Text>
+                <Text style={styles.modalSubtitle}>Provide Justification for Record</Text>
+              </View>
+              <TouchableOpacity onPress={() => setDeclineModalVisible(false)}>
+                <Ionicons name="close" size={20} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.declineInstructionText}>
+                Under TRIBESANDCLIQS Policy, declining a refund request requires an official justification that will be recorded in audit logs and communicated to the attendee.
+              </Text>
+              <Text style={[styles.modalSectionLabel, { marginTop: SPACING.md }]}>DECLINE REASON *</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Explain why this request is ineligible for refund..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={3}
+                value={declineReason}
+                onChangeText={setDeclineReason}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setDeclineModalVisible(false)}
+                disabled={respondingRefund}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#EF4444' }, respondingRefund && { opacity: 0.6 }]}
+                onPress={handleConfirmDecline}
+                disabled={respondingRefund}
+              >
+                {respondingRefund ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.modalSubmitBtnText, { color: '#FFFFFF' }]}>Confirm Decline</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -782,6 +1054,294 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     color: COLORS.buttonText,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  tabBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeText: {
+    color: '#0E1216',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  refundPolicyNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.xs + 2,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+  },
+  refundPolicyNoticeTitle: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  refundPolicyNoticeDesc: {
+    color: 'rgba(253, 230, 138, 0.85)',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  refundCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  refundCardPending: {
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+  },
+  refundHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingBottom: SPACING.xs + 2,
+  },
+  refundOrderTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  refundBuyer: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  refundBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  refundBadgePending: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  refundBadgeApproved: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+  },
+  refundBadgeDeclined: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  refundBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  refundBadgeTextPending: { color: '#F59E0B' },
+  refundBadgeTextApproved: { color: '#4ADE80' },
+  refundBadgeTextDeclined: { color: '#F87171' },
+  refundBody: {
+    gap: 4,
+  },
+  refundRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  refundLabel: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+  },
+  refundAmount: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  refundGround: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  refundReasonBox: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.xs + 2,
+    borderRadius: RADIUS.sm,
+    marginTop: 3,
+  },
+  refundReasonLabel: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  refundReasonText: {
+    color: COLORS.text,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  slaTimerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.sm,
+    marginTop: 4,
+  },
+  slaTimerBoxExpired: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  slaTimerText: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  refundActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
+    marginTop: 2,
+  },
+  declineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 7,
+    borderRadius: RADIUS.md,
+  },
+  declineBtnText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  authorizeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 7,
+    borderRadius: RADIUS.md,
+  },
+  authorizeBtnText: {
+    color: '#0E1216',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#161A1E',
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+    paddingBottom: Platform.OS === 'ios' ? 24 : SPACING.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+  },
+  modalBody: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+  },
+  declineInstructionText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  modalSectionLabel: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: SPACING.xs,
+  },
+  modalTextInput: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    color: COLORS.text,
+    padding: SPACING.sm,
+    fontSize: 13,
+    minHeight: 75,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalCancelBtnText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalSubmitBtn: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+  },
+  modalSubmitBtnText: {
     fontSize: 13,
     fontWeight: '700',
   },

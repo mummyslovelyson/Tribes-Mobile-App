@@ -35,6 +35,16 @@ export const simulatePaymentApi = async (reference, orderId) => {
   return res.data;
 };
 
+export const cancelOrderApi = async (id, data = {}) => {
+  const res = await client.post(`/orders/${id}/cancel`, data);
+  return res.data;
+};
+
+export const requestRefundApi = async (id, data = {}) => {
+  const res = await client.post(`/orders/${id}/refund`, data);
+  return res.data;
+};
+
 export default {
   createOrderApi,
   getUserOrdersApi,
@@ -43,4 +53,6 @@ export default {
   initiateOrderPaymentApi,
   verifyPaymentApi,
   simulatePaymentApi,
+  cancelOrderApi,
+  requestRefundApi,
 };

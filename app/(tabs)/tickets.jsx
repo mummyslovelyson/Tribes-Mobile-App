@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Image } from 'expo-image';
 import Header from '../../src/components/Header';
 import TicketCard from '../../src/components/TicketCard';
 import Button from '../../src/components/Button';
@@ -240,10 +241,21 @@ export default function TicketsScreen() {
               {selectedTicket?.ticket_type_name || selectedTicket?.tier_name || 'General Admission'}
             </Text>
 
-            {/* QR Mock graphic with brand styling */}
+            {/* Live Dynamic QR Code presentation */}
             <View style={styles.qrContainer}>
               <View style={styles.qrBox}>
-                <Ionicons name="qr-code" size={160} color={COLORS.background} />
+                <Image
+                  source={{
+                    uri:
+                      selectedTicket?.qr_code_url ||
+                      `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                        selectedTicket?.ticket_code || selectedTicket?.ticket_number || String(selectedTicket?.id || '')
+                      )}&color=000000&bgcolor=ffffff`,
+                  }}
+                  style={styles.qrImage}
+                  contentFit="contain"
+                  transition={200}
+                />
               </View>
               <Text style={styles.modalCode}>
                 {selectedTicket?.ticket_code || `#TC-${selectedTicket?.id}`}
@@ -517,6 +529,13 @@ const styles = StyleSheet.create({
   qrBox: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+  },
+  qrImage: {
+    width: 180,
+    height: 180,
   },
   modalCode: {
     color: COLORS.background,

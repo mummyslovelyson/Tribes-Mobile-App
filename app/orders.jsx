@@ -7,13 +7,20 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Header from '../src/components/Header';
 import Button from '../src/components/Button';
-import { getUserOrdersApi } from '../src/api/orders';
+import { getUserOrdersApi, cancelOrderApi, requestRefundApi } from '../src/api/orders';
+import { BUYER_REFUND_OPTIONS } from '../src/constants/refundPolicy';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../src/constants/theme';
 
@@ -23,6 +30,19 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Refund Modal State
+  const [refundModalVisible, setRefundModalVisible] = useState(false);
+  const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null);
+  const [refundCircumstance, setRefundCircumstance] = useState('5_BUYER_CIRCUMSTANCES_UNRESPONSIVE_ORGANIZER');
+  const [refundReason, setRefundReason] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+
+  // Cancel Modal State
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [submittingCancel, setSubmittingCancel] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     if (!isAuthenticated) {
@@ -63,29 +83,139 @@ export default function OrdersScreen() {
     });
   };
 
+  const handleOpenRefundModal = (order) => {
+    setSelectedOrderForRefund(order);
+    setRefundCircumstance('5_BUYER_CIRCUMSTANCES_UNRESPONSIVE_ORGANIZER');
+    setRefundReason('');
+    setRefundModalVisible(true);
+  };
+
+  const handleSubmitRefund = async () => {
+    if (!selectedOrderForRefund) return;
+    if (!refundReason.trim()) {
+      Alert.alert('Reason Required', 'Please provide an explanation for your refund request.');
+      return;
+    }
+
+    setSubmittingRefund(true);
+    try {
+      const res = await requestRefundApi(selectedOrderForRefund.id, {
+        reason: refundReason.trim(),
+        circumstance: refundCircumstance,
+        policyCircumstance: refundCircumstance,
+      });
+
+      Alert.alert(
+        'Request Submitted',
+        res?.message || 'Your refund request has been transmitted to the Event Organizer. Under Clause 5, they have 24 hours to review. If unresponsive, TRIBESANDCLIQS will resolve it.',
+      );
+
+      // Update local order status
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === selectedOrderForRefund.id
+            ? {
+                ...o,
+                refund_request_status: 'pending',
+                refund_status_detail: 'pending',
+                organizer_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              }
+            : o,
+        ),
+      );
+
+      setRefundModalVisible(false);
+      setSelectedOrderForRefund(null);
+      setRefundReason('');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to submit refund request. Please try again.';
+      Alert.alert('Request Failed', msg);
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
+
+  const handleOpenCancelModal = (order) => {
+    setSelectedOrderForCancel(order);
+    setCancelReason('');
+    setCancelModalVisible(true);
+  };
+
+  const handleSubmitCancel = async () => {
+    if (!selectedOrderForCancel) return;
+    setSubmittingCancel(true);
+    try {
+      await cancelOrderApi(selectedOrderForCancel.id, {
+        reason: cancelReason.trim() || undefined,
+      });
+
+      Alert.alert('Booking Cancelled', 'Your booking has been cancelled successfully.');
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === selectedOrderForCancel.id ? { ...o, status: 'cancelled' } : o)),
+      );
+
+      setCancelModalVisible(false);
+      setSelectedOrderForCancel(null);
+      setCancelReason('');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to cancel booking. Please try again.';
+      Alert.alert('Cancellation Failed', msg);
+    } finally {
+      setSubmittingCancel(false);
+    }
+  };
+
   const renderOrderItem = ({ item }) => {
-    const isPaid = item.status === 'paid' || item.status === 'completed' || item.payment_status === 'paid';
+    const payStatus = (item.payment_status || item.paymentStatus || 'pending').toLowerCase();
+    const orderStatus = (item.status || '').toLowerCase();
+    const isCancelled = orderStatus === 'cancelled';
+    const refundStatus = (item.refund_request_status || item.refund_status_detail || '').toLowerCase();
+    const isRefundPending = refundStatus === 'pending';
+    const isRefunded = payStatus === 'refunded' || orderStatus === 'refunded' || refundStatus === 'approved';
+    const isPaid = (payStatus === 'paid' || payStatus === 'completed' || orderStatus === 'paid' || orderStatus === 'completed') && !isCancelled && !isRefunded;
     const totalAmount = Number(item.total_amount || item.total || 0);
 
     return (
-      <View style={styles.orderCard}>
+      <View style={[styles.orderCard, isRefundPending && styles.orderCardPending]}>
         {/* Header: Order ID & Status */}
         <View style={styles.orderHeader}>
           <View>
             <Text style={styles.orderNumber}>
-              {item.order_number || `ORDER #${item.id}`}
+              {item.order_number || `ORDER #${(item.id || '').toString().slice(-8).toUpperCase()}`}
             </Text>
             <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
           </View>
 
-          <View style={[styles.statusBadge, isPaid ? styles.statusPaid : styles.statusPending]}>
-            <Text style={[styles.statusText, isPaid ? styles.statusTextPaid : styles.statusTextPending]}>
-              {item.status ? item.status.toUpperCase() : 'PAID'}
-            </Text>
+          {/* Dynamic Status Badges */}
+          <View style={styles.badgeRow}>
+            {isRefundPending ? (
+              <View style={styles.statusRefundPending}>
+                <Ionicons name="time-outline" size={11} color="#F59E0B" />
+                <Text style={styles.statusTextRefundPending}>24H REVIEW SLA</Text>
+              </View>
+            ) : isRefunded ? (
+              <View style={styles.statusRefunded}>
+                <Ionicons name="checkmark-done" size={11} color="#38BDF8" />
+                <Text style={styles.statusTextRefunded}>REFUNDED</Text>
+              </View>
+            ) : isCancelled ? (
+              <View style={styles.statusCancelled}>
+                <Text style={styles.statusTextCancelled}>CANCELLED</Text>
+              </View>
+            ) : isPaid ? (
+              <View style={styles.statusPaid}>
+                <Text style={styles.statusTextPaid}>PAID</Text>
+              </View>
+            ) : (
+              <View style={styles.statusPending}>
+                <Text style={styles.statusTextPending}>PENDING</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Event or Items Info */}
+        {/* Event Info */}
         <View style={styles.orderBody}>
           {item.event_title ? (
             <Text style={styles.eventTitle} numberOfLines={1}>
@@ -109,7 +239,25 @@ export default function OrdersScreen() {
           ) : null}
         </View>
 
-        {/* Total & Action */}
+        {/* Clause 5 SLA Review Callout Banner */}
+        {isRefundPending && (
+          <View style={styles.slaCallout}>
+            <Ionicons name="shield-checkmark" size={15} color="#F59E0B" style={{ marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.slaCalloutTitle}>Refund Request Under Review</Text>
+              <Text style={styles.slaCalloutDesc}>
+                Under TRIBESANDCLIQS Policy Clause 5, the Event Organizer has 24 hours to respond. If unresponsive, the platform steps in to process your refund.
+              </Text>
+              {item.organizer_deadline && (
+                <Text style={styles.slaCalloutDeadline}>
+                  Organizer Deadline: {new Date(item.organizer_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(item.organizer_deadline).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Total & Action Buttons */}
         <View style={styles.orderFooter}>
           <View>
             <Text style={styles.totalLabel}>TOTAL PAID</Text>
@@ -118,14 +266,41 @@ export default function OrdersScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.viewTicketsBtn}
-            activeOpacity={0.8}
-            onPress={() => router.push('/(tabs)/tickets')}
-          >
-            <Ionicons name="ticket-outline" size={15} color={COLORS.text} />
-            <Text style={styles.viewTicketsBtnText}>View Tickets</Text>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            {/* View Tickets */}
+            <TouchableOpacity
+              style={styles.viewTicketsBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push('/(tabs)/tickets')}
+            >
+              <Ionicons name="ticket-outline" size={14} color={COLORS.text} />
+              <Text style={styles.viewTicketsBtnText}>Tickets</Text>
+            </TouchableOpacity>
+
+            {/* Request Refund (Policy Clause) */}
+            {isPaid && !isRefundPending && (
+              <TouchableOpacity
+                style={styles.refundBtn}
+                activeOpacity={0.8}
+                onPress={() => handleOpenRefundModal(item)}
+              >
+                <Ionicons name="return-up-back" size={14} color="#F59E0B" />
+                <Text style={styles.refundBtnText}>Refund</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Cancel Booking */}
+            {!isCancelled && !isRefunded && !isRefundPending && (
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                activeOpacity={0.8}
+                onPress={() => handleOpenCancelModal(item)}
+              >
+                <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -199,6 +374,188 @@ export default function OrdersScreen() {
           }
         />
       )}
+
+      {/* ── Modal: Request Refund (Policy Clause 5 SLA) ── */}
+      <Modal
+        visible={refundModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRefundModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderIcon}>
+                <Ionicons name="shield-checkmark" size={18} color="#F59E0B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Request Refund</Text>
+                <Text style={styles.modalSubtitle}>TRIBESANDCLIQS Policy Protection</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setRefundModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Event & Order Context */}
+              {selectedOrderForRefund && (
+                <View style={styles.modalContextCard}>
+                  <Text style={styles.modalEventTitle} numberOfLines={1}>
+                    {selectedOrderForRefund.event_title || 'Selected Event'}
+                  </Text>
+                  <Text style={styles.modalOrderInfo}>
+                    Order #{(selectedOrderForRefund.id || '').toString().slice(-8).toUpperCase()} • GHS {Number(selectedOrderForRefund.total_amount || selectedOrderForRefund.total || 0).toFixed(2)}
+                  </Text>
+                </View>
+              )}
+
+              {/* Policy Grounds Selector */}
+              <Text style={styles.modalSectionLabel}>STATUTORY POLICY CIRCUMSTANCE</Text>
+              <View style={styles.groundsList}>
+                {BUYER_REFUND_OPTIONS.map((opt) => {
+                  const selected = refundCircumstance === opt.id;
+                  return (
+                    <TouchableOpacity
+                      key={opt.id}
+                      style={[styles.groundCard, selected && styles.groundCardSelected]}
+                      onPress={() => setRefundCircumstance(opt.id)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.groundHeader}>
+                        <View style={[styles.radioCircle, selected && styles.radioCircleSelected]}>
+                          {selected && <View style={styles.radioDot} />}
+                        </View>
+                        <Text style={[styles.groundTitle, selected && styles.groundTitleSelected]}>
+                          Clause {opt.clauseNumber}: {opt.title}
+                        </Text>
+                      </View>
+                      <Text style={styles.groundDesc}>{opt.description}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* SLA Guarantee Note */}
+              <View style={styles.slaNoticeBox}>
+                <Ionicons name="time" size={16} color="#38BDF8" style={{ marginTop: 1 }} />
+                <Text style={styles.slaNoticeText}>
+                  Under Clause 5, the Event Organizer has 24 hours to respond. If they do not respond within 1 day, TRIBESANDCLIQS will intervene to execute the refund.
+                </Text>
+              </View>
+
+              {/* Detailed Reason Input */}
+              <Text style={styles.modalSectionLabel}>EXPLANATION FOR REVIEW *</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Explain why you are requesting a refund..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={3}
+                value={refundReason}
+                onChangeText={setRefundReason}
+                textAlignVertical="top"
+              />
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setRefundModalVisible(false)}
+                disabled={submittingRefund}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, submittingRefund && { opacity: 0.6 }]}
+                onPress={handleSubmitRefund}
+                disabled={submittingRefund}
+              >
+                {submittingRefund ? (
+                  <ActivityIndicator size="small" color="#0E1216" />
+                ) : (
+                  <Text style={styles.modalSubmitBtnText}>Submit Request</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Modal: Cancel Booking ── */}
+      <Modal
+        visible={cancelModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCancelModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="close-circle" size={18} color="#EF4444" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Cancel Booking</Text>
+                <Text style={styles.modalSubtitle}>Release your reserved tickets</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setCancelModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.cancelWarningText}>
+                Are you sure you want to cancel this booking? This will invalidate your tickets.
+              </Text>
+              <Text style={[styles.modalSectionLabel, { marginTop: SPACING.md }]}>REASON (OPTIONAL)</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Reason for cancellation..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={3}
+                value={cancelReason}
+                onChangeText={setCancelReason}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setCancelModalVisible(false)}
+                disabled={submittingCancel}
+              >
+                <Text style={styles.modalCancelBtnText}>Keep Booking</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#EF4444' }, submittingCancel && { opacity: 0.6 }]}
+                onPress={handleSubmitCancel}
+                disabled={submittingCancel}
+              >
+                {submittingCancel ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.modalSubmitBtnText, { color: '#FFFFFF' }]}>Confirm Cancel</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -233,6 +590,9 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     gap: SPACING.sm,
   },
+  orderCardPending: {
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
   orderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,38 +605,90 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   orderDate: {
     color: COLORS.textMuted,
     fontSize: 11,
     marginTop: 2,
   },
-  statusBadge: {
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statusPaid: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
-  statusPaid: {
-    backgroundColor: 'rgba(239, 239, 241, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 239, 241, 0.2)',
-  },
-  statusPending: {
-    backgroundColor: COLORS.accentMuted,
-    borderWidth: 1,
-    borderColor: COLORS.accentBorder,
-  },
-  statusText: {
+  statusTextPaid: {
+    color: '#4ADE80',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  statusTextPaid: {
-    color: COLORS.text,
+  statusPending: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
   },
   statusTextPending: {
-    color: '#FF6B6B',
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  statusRefundPending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  statusTextRefundPending: {
+    color: '#F59E0B',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  statusRefunded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  statusTextRefunded: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  statusCancelled: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+  },
+  statusTextCancelled: {
+    color: '#F87171',
+    fontSize: 10,
+    fontWeight: '800',
   },
   orderBody: {
     gap: 4,
@@ -306,6 +718,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  slaCallout: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.xs + 2,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    padding: SPACING.sm,
+    borderRadius: RADIUS.md,
+    marginTop: 2,
+  },
+  slaCalloutTitle: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  slaCalloutDesc: {
+    color: 'rgba(253, 230, 138, 0.85)',
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  slaCalloutDeadline: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: 4,
+    fontWeight: '600',
+  },
   orderFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,20 +768,57 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 1,
   },
-  viewTicketsBtn: {
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  viewTicketsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 7,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 6,
     borderRadius: RADIUS.md,
   },
   viewTicketsBtnText: {
     color: COLORS.text,
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  refundBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+  },
+  refundBtnText: {
+    color: '#F59E0B',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+  },
+  cancelBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
     fontWeight: '600',
   },
   authPromptContainer: {
@@ -411,5 +889,199 @@ const styles = StyleSheet.create({
   exploreBtn: {
     marginTop: SPACING.md,
     paddingHorizontal: SPACING.xl,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#161A1E',
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+    maxHeight: '85%',
+    paddingBottom: Platform.OS === 'ios' ? 24 : SPACING.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+  },
+  modalBody: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+  },
+  modalContextCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.md,
+  },
+  modalEventTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalOrderInfo: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  modalSectionLabel: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: SPACING.xs,
+  },
+  groundsList: {
+    gap: SPACING.xs + 2,
+    marginBottom: SPACING.md,
+  },
+  groundCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.sm,
+  },
+  groundCardSelected: {
+    borderColor: '#F59E0B',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+  },
+  groundHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  radioCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: COLORS.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: '#F59E0B',
+  },
+  radioDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#F59E0B',
+  },
+  groundTitle: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  groundTitleSelected: {
+    color: '#FBBF24',
+  },
+  groundDesc: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 3,
+    marginLeft: 22,
+  },
+  slaNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.xs,
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  slaNoticeText: {
+    color: '#BAE6FD',
+    fontSize: 11,
+    lineHeight: 15,
+    flex: 1,
+  },
+  modalTextInput: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    color: COLORS.text,
+    padding: SPACING.sm,
+    fontSize: 13,
+    minHeight: 75,
+  },
+  cancelWarningText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalCancelBtnText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalSubmitBtn: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#F59E0B',
+  },
+  modalSubmitBtnText: {
+    color: '#0E1216',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
