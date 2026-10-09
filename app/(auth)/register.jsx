@@ -570,7 +570,15 @@ export default function RegisterScreen() {
               </View>
               <Text style={styles.termsText}>
                 I agree to the <Text style={styles.termsHighlight}>Terms of Service</Text> and{' '}
-                <Text style={styles.termsHighlight}>Privacy Policy</Text>
+                <Text
+                  style={styles.termsHighlight}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    router.push('/privacy');
+                  }}
+                >
+                  Privacy Policy
+                </Text>
               </Text>
             </TouchableOpacity>
 

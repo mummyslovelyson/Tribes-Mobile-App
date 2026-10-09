@@ -271,6 +271,12 @@ export default function ProfileScreen() {
       icon: 'sparkles-outline',
       onPress: () => router.push('/(tabs)/chat'),
     },
+    {
+      id: 'privacy_policy',
+      title: 'Privacy Policy',
+      icon: 'shield-checkmark-outline',
+      onPress: () => router.push('/privacy'),
+    },
   ];
 
   return (
