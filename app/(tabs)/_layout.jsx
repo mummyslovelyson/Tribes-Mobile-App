@@ -83,7 +83,7 @@ export default function TabLayout() {
             <Ionicons
               name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
               size={focused ? 30 : 27}
-              color={focused ? '#10B981' : color}
+              color={focused ? COLORS.primary : color}
             />
           ),
         }}

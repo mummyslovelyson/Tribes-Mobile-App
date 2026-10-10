@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +28,7 @@ import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, isAdmin, logout, updateProfile, changePassword } = useAuth();
+  const { user, isAuthenticated, isAdmin, isOrganizer, logout, updateProfile, changePassword, refreshProfile } = useAuth();
 
   // Modals state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -41,61 +43,18 @@ export default function ProfileScreen() {
   const [ticketCount, setTicketCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [loadingTickets, setLoadingTickets] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Live Auto-Refresh Dashboard on screen focus
-  useFocusEffect(
-    useCallback(() => {
-      if (!isAuthenticated) {
-        setLoadingTickets(false);
-        return;
-      }
-      let active = true;
-      (async () => {
-        try {
-          const [ticketsData, ordersData] = await Promise.allSettled([
-            getMyTicketsApi(),
-            getUserOrdersApi(),
-          ]);
-
-          if (!active) return;
-
-          if (ticketsData.status === 'fulfilled') {
-            const list = ticketsData.value?.tickets || ticketsData.value || [];
-            setTickets(list);
-            const activeList = list.filter((t) => t.status === 'active' || !t.is_used);
-            const pastList = list.filter((t) => t.status === 'used' || t.is_used);
-            setActiveTickets(activeList);
-            setPastTickets(pastList);
-            setTicketCount(activeList.length);
-          }
-
-          if (ordersData.status === 'fulfilled') {
-            const oList = Array.isArray(ordersData.value) ? ordersData.value : ordersData.value?.orders || [];
-            setOrderCount(oList.length);
-          }
-        } catch (err) {
-          console.warn('[ProfileScreen] Dashboard load warning:', err.message);
-        } finally {
-          if (active) setLoadingTickets(false);
-        }
-      })();
-      return () => {
-        active = false;
-      };
-    }, [isAuthenticated])
-  );
-
-  const displayedTickets = ticketTab === 'active' ? activeTickets : pastTickets;
-
-  // Edit Profile Form
+  // Edit Profile Form State
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editBio, setEditBio] = useState('');
+  const [editOrgName, setEditOrgName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
 
-  // Change Password Form
+  // Change Password Form State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -103,29 +62,92 @@ export default function ProfileScreen() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' });
 
+  // Data fetching helper
+  const loadDashboardData = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoadingTickets(false);
+      return;
+    }
+    try {
+      const [ticketsData, ordersData] = await Promise.allSettled([
+        getMyTicketsApi(),
+        getUserOrdersApi(),
+      ]);
+
+      if (ticketsData.status === 'fulfilled') {
+        const list = ticketsData.value?.tickets || ticketsData.value || [];
+        setTickets(list);
+        const activeList = list.filter((t) => t.status === 'active' || !t.is_used);
+        const pastList = list.filter((t) => t.status === 'used' || t.is_used);
+        setActiveTickets(activeList);
+        setPastTickets(pastList);
+        setTicketCount(activeList.length);
+      }
+
+      if (ordersData.status === 'fulfilled') {
+        const oList = Array.isArray(ordersData.value) ? ordersData.value : ordersData.value?.orders || [];
+        setOrderCount(oList.length);
+      }
+    } catch (err) {
+      console.warn('[ProfileScreen] Dashboard load warning:', err.message);
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, [isAuthenticated]);
+
+  // Live Auto-Refresh Dashboard on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboardData();
+    }, [loadDashboardData])
+  );
+
+  // Pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (refreshProfile) {
+        await refreshProfile().catch(() => {});
+      }
+      await loadDashboardData();
+    } catch (_err) {
+      // Ignored
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const displayedTickets = ticketTab === 'active' ? activeTickets : pastTickets;
+
   const openEditProfile = () => {
     setEditName(user?.name || '');
     setEditPhone(user?.phone || '');
-    setEditLocation(user?.location || '');
-    setEditBio(user?.bio || '');
+    setEditLocation(user?.location || user?.city || '');
+    setEditBio(user?.bio || user?.description || '');
+    setEditOrgName(user?.organization_name || '');
     setProfileMsg({ type: '', text: '' });
     setEditProfileOpen(true);
   };
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
-      setProfileMsg({ type: 'error', text: 'Name is required' });
+      setProfileMsg({ type: 'error', text: 'Full Name is required' });
       return;
     }
     setSavingProfile(true);
     setProfileMsg({ type: '', text: '' });
     try {
-      await updateProfile({
+      const payload = {
         name: editName.trim(),
         phone: editPhone.trim() || undefined,
         location: editLocation.trim() || undefined,
+        city: editLocation.trim() || undefined,
         bio: editBio.trim() || undefined,
-      });
+      };
+      if (isStaffOrOrganizer && editOrgName.trim()) {
+        payload.organization_name = editOrgName.trim();
+      }
+      await updateProfile(payload);
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => {
         setEditProfileOpen(false);
@@ -184,7 +206,27 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const isStaffOrOrganizer = user?.role === 'organizer' || user?.role === 'admin' || user?.role === 'staff';
+  const isStaffOrOrganizer = isOrganizer || user?.role === 'organizer' || user?.role === 'admin' || user?.role === 'staff';
+
+  // Format joined date helper
+  const getMemberSince = () => {
+    const raw = user?.created_at || user?.createdAt;
+    if (!raw) return 'Active Member';
+    try {
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return 'Active Member';
+      return `Member since ${d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+    } catch {
+      return 'Active Member';
+    }
+  };
+
+  // Extract favorite categories array
+  const favoriteCategories = Array.isArray(user?.favorite_categories)
+    ? user.favorite_categories
+    : Array.isArray(user?.favoriteCategories)
+    ? user.favoriteCategories
+    : [];
 
   const MENU_ITEMS = [
     {
@@ -206,7 +248,7 @@ export default function ProfileScreen() {
           {
             id: 'admin_control',
             title: 'Admin Control Center',
-            icon: 'shield-checkmark-outline',
+            icon: 'shield-outline',
             onPress: () => router.push('/admin'),
             authRequired: true,
           },
@@ -238,8 +280,8 @@ export default function ProfileScreen() {
         ]
       : [
           {
-            id: 'organizer_hub',
-            title: 'Organizer Hub & Event Management',
+            id: 'become_organizer',
+            title: 'Host Events & Organizer Hub',
             icon: 'briefcase-outline',
             onPress: () => router.push('/organizer'),
             authRequired: true,
@@ -268,7 +310,7 @@ export default function ProfileScreen() {
     {
       id: 'help',
       title: 'Cliqs Concierge Assistant',
-      icon: 'sparkles-outline',
+      icon: 'chatbubble-ellipses-outline',
       onPress: () => router.push('/(tabs)/chat'),
     },
     {
@@ -287,45 +329,133 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <Header title="My Account" subtitle="Profile & preferences" showNotification={false} />
+      <Header title="My Account" subtitle="Profile & Preferences" showNotification={false} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Identity Card */}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
+        {/* User Identity & Profile Card */}
         {isAuthenticated && user ? (
           <View style={styles.userCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </Text>
+            {/* Top Identity Row */}
+            <View style={styles.userTopRow}>
+              {user.avatar || user.avatar_url ? (
+                <Image
+                  source={{ uri: user.avatar || user.avatar_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.userInfo}>
+                <View style={styles.userNameRow}>
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {user.name || 'Valued Member'}
+                  </Text>
+                  {(user.is_verified || user.is_email_verified) && (
+                    <View style={styles.verifiedIconWrap}>
+                      <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} />
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.userMetaRow}>
+                  <Ionicons name="mail-outline" size={13} color={COLORS.textMuted} />
+                  <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
+                </View>
+
+                {user.phone ? (
+                  <View style={styles.userMetaRow}>
+                    <Ionicons name="call-outline" size={13} color={COLORS.textMuted} />
+                    <Text style={styles.userPhone}>{user.phone}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <TouchableOpacity
+                style={styles.editIconBtn}
+                onPress={openEditProfile}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="pencil" size={16} color={COLORS.primary} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{user.name || 'User'}</Text>
-              <Text style={styles.userEmail}>{user.email}</Text>
-              {user.phone ? (
-                <Text style={styles.userPhone}>{user.phone}</Text>
-              ) : null}
+            {/* Badges & Role Row */}
+            <View style={styles.badgesRow}>
               <View style={styles.rolePill}>
-                <Text style={styles.roleText}>{user.role || 'Attendee'}</Text>
+                <Ionicons name="ribbon-outline" size={11} color={COLORS.primary} />
+                <Text style={styles.roleText}>{user.role ? user.role.toUpperCase() : 'ATTENDEE'}</Text>
+              </View>
+
+              <View style={styles.memberSincePill}>
+                <Ionicons name="calendar-outline" size={11} color={COLORS.textMuted} />
+                <Text style={styles.memberSinceText}>{getMemberSince()}</Text>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.editIconBtn}
-              onPress={openEditProfile}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="pencil-outline" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
+            {/* User Bio & Extended Details (if present) */}
+            {(user.location || user.city || user.bio || user.organization_name) && (
+              <View style={styles.userDetailsBox}>
+                {(user.location || user.city) && (
+                  <View style={styles.detailRow}>
+                    <Ionicons name="location-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.detailRowText}>{user.location || user.city}</Text>
+                  </View>
+                )}
+
+                {user.organization_name && (
+                  <View style={styles.detailRow}>
+                    <Ionicons name="business-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.detailRowText}>{user.organization_name}</Text>
+                  </View>
+                )}
+
+                {user.bio ? (
+                  <View style={styles.bioRow}>
+                    <Text style={styles.bioText}>{user.bio}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
+
+            {/* Favorite Event Categories Chips */}
+            {favoriteCategories.length > 0 && (
+              <View style={styles.interestsContainer}>
+                <Text style={styles.interestsLabel}>FAVORITE INTERESTS</Text>
+                <View style={styles.interestsPills}>
+                  {favoriteCategories.map((cat, idx) => (
+                    <View key={idx} style={styles.interestChip}>
+                      <Text style={styles.interestChipText}>{cat}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.guestCard}>
             <View style={styles.guestIcon}>
-              <Ionicons name="person-outline" size={28} color={COLORS.textMuted} />
+              <Ionicons name="person-outline" size={28} color={COLORS.primary} />
             </View>
             <View style={styles.guestInfo}>
               <Text style={styles.guestTitle}>Welcome to Tribes &amp; Cliqs</Text>
-              <Text style={styles.guestSubtitle}>Sign in to manage your tickets, passes, and orders</Text>
+              <Text style={styles.guestSubtitle}>Sign in to manage your tickets, passes, and personal profile</Text>
             </View>
             <Button
               title="Sign In / Register"
@@ -341,20 +471,20 @@ export default function ProfileScreen() {
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>MY DASHBOARD</Text>
               <View style={styles.liveWalletBadge}>
-                <Ionicons name="flash" size={10} color="#22C55E" />
+                <Ionicons name="flash-outline" size={11} color={COLORS.primary} />
                 <Text style={styles.liveWalletText}>LIVE WALLET</Text>
               </View>
             </View>
 
-            {/* Quick Metrics Grid */}
+            {/* Quick Metrics Grid (Strictly Logo Colors) */}
             <View style={styles.metricsGrid}>
               <TouchableOpacity
                 style={styles.metricCard}
                 onPress={() => router.push('/(tabs)/tickets')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(217, 38, 38, 0.14)' }]}>
-                  <Ionicons name="ticket-outline" size={20} color={COLORS.accent} />
+                <View style={styles.metricIconCircle}>
+                  <Ionicons name="ticket-outline" size={20} color={COLORS.primary} />
                 </View>
                 <Text style={styles.metricNumber}>{ticketCount}</Text>
                 <Text style={styles.metricLabel}>My Passes</Text>
@@ -366,8 +496,8 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/orders')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.14)' }]}>
-                  <Ionicons name="receipt-outline" size={20} color="#3B82F6" />
+                <View style={styles.metricIconCircle}>
+                  <Ionicons name="receipt-outline" size={20} color={COLORS.textSecondary} />
                 </View>
                 <Text style={styles.metricNumber}>{orderCount}</Text>
                 <Text style={styles.metricLabel}>Orders</Text>
@@ -379,8 +509,8 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/saved')}
                 activeOpacity={0.8}
               >
-                <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(236, 72, 153, 0.14)' }]}>
-                  <Ionicons name="heart-outline" size={20} color="#EC4899" />
+                <View style={styles.metricIconCircle}>
+                  <Ionicons name="heart-outline" size={20} color={COLORS.primary} />
                 </View>
                 <Text style={styles.metricNumber}>Saved</Text>
                 <Text style={styles.metricLabel}>Wishlist</Text>
@@ -393,10 +523,10 @@ export default function ProfileScreen() {
               <View style={styles.ticketsSectionHeader}>
                 <View style={{ flex: 1 }}>
                   <View style={styles.ticketSectionTitleRow}>
-                    <Text style={styles.ticketsSectionTitle}>MY PASSES {'&'} TICKETS</Text>
+                    <Text style={styles.ticketsSectionTitle}>MY PASSES &amp; TICKETS</Text>
                     {activeTickets.length > 0 && (
                       <View style={styles.activePassBadge}>
-                        <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
+                        <Ionicons name="shield-checkmark" size={10} color={COLORS.primary} />
                         <Text style={styles.activePassBadgeText}>{activeTickets.length} ACTIVE</Text>
                       </View>
                     )}
@@ -415,7 +545,7 @@ export default function ProfileScreen() {
                     style={styles.fullWalletLink}
                   >
                     <Text style={styles.fullWalletLinkText}>Wallet</Text>
-                    <Ionicons name="arrow-forward" size={14} color={COLORS.accent} />
+                    <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -461,9 +591,9 @@ export default function ProfileScreen() {
 
               {/* Tickets Render */}
               {loadingTickets ? (
-                <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
-                  <ActivityIndicator size="small" color="#F59E0B" />
-                  <Text style={{ marginTop: 8, fontSize: 12, color: COLORS.textMuted }}>Loading your passes...</Text>
+                <View style={styles.ticketsLoader}>
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <Text style={styles.ticketsLoaderText}>Loading your passes...</Text>
                 </View>
               ) : displayedTickets.length > 0 ? (
                 <View style={styles.ticketsListWrapper}>
@@ -511,7 +641,7 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/check-in')}
               >
                 <View style={styles.organizerHubIcon}>
-                  <Ionicons name="scan-outline" size={22} color={COLORS.accent} />
+                  <Ionicons name="scan-outline" size={22} color={COLORS.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.organizerHubTitle}>Organizer Gate Check-In</Text>
@@ -534,7 +664,7 @@ export default function ProfileScreen() {
           >
             <View style={styles.adminBannerLeft}>
               <View style={styles.adminIconBox}>
-                <Ionicons name="shield-checkmark" size={22} color="#10B981" />
+                <Ionicons name="shield-checkmark" size={22} color={COLORS.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.adminBadgeSmall}>
@@ -542,11 +672,11 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.adminBannerTitle}>Admin Control Center</Text>
                 <Text style={styles.adminBannerSubtitle}>
-                  Moderate events, organizers, users & remote settings
+                  Moderate events, organizers, users &amp; remote settings
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#10B981" />
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
           </TouchableOpacity>
         )}
 
@@ -605,7 +735,12 @@ export default function ProfileScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+              <View style={styles.modalHeaderBadge}>
+                <Ionicons name="person" size={16} color={COLORS.primary} />
+              </View>
+              <Text style={styles.modalTitle}>Personal Information</Text>
+            </View>
             <TouchableOpacity onPress={() => setEditProfileOpen(false)} activeOpacity={0.7}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
@@ -622,7 +757,7 @@ export default function ProfileScreen() {
                 <Ionicons
                   name={profileMsg.type === 'error' ? 'alert-circle' : 'checkmark-circle'}
                   size={18}
-                  color={profileMsg.type === 'error' ? '#EF4444' : '#10B981'}
+                  color={COLORS.primary}
                 />
                 <Text
                   style={[
@@ -636,13 +771,14 @@ export default function ProfileScreen() {
             ) : null}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>FULL NAME</Text>
+              <Text style={styles.inputLabel}>FULL NAME *</Text>
               <TextInput
                 style={styles.modalInput}
                 value={editName}
                 onChangeText={setEditName}
-                placeholder="Your name"
+                placeholder="Your full name"
                 placeholderTextColor={COLORS.placeholder}
+                cursorColor={COLORS.primary}
               />
             </View>
 
@@ -652,9 +788,10 @@ export default function ProfileScreen() {
                 style={styles.modalInput}
                 value={editPhone}
                 onChangeText={setEditPhone}
-                placeholder="Phone number"
+                placeholder="e.g. +233 50 123 4567"
                 placeholderTextColor={COLORS.placeholder}
                 keyboardType="phone-pad"
+                cursorColor={COLORS.primary}
               />
             </View>
 
@@ -666,19 +803,35 @@ export default function ProfileScreen() {
                 onChangeText={setEditLocation}
                 placeholder="e.g. Accra, Ghana"
                 placeholderTextColor={COLORS.placeholder}
+                cursorColor={COLORS.primary}
               />
             </View>
 
+            {isStaffOrOrganizer && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>ORGANIZATION / BRAND NAME</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editOrgName}
+                  onChangeText={setEditOrgName}
+                  placeholder="Official Organization Brand"
+                  placeholderTextColor={COLORS.placeholder}
+                  cursorColor={COLORS.primary}
+                />
+              </View>
+            )}
+
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>BIO</Text>
+              <Text style={styles.inputLabel}>BIO &amp; ABOUT</Text>
               <TextInput
                 style={[styles.modalInput, styles.textArea]}
                 value={editBio}
                 onChangeText={setEditBio}
-                placeholder="A short note about you"
+                placeholder="A short note about your interests, vibes & events"
                 placeholderTextColor={COLORS.placeholder}
                 multiline
                 numberOfLines={3}
+                cursorColor={COLORS.primary}
               />
             </View>
 
@@ -704,7 +857,12 @@ export default function ProfileScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Change Password</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+              <View style={styles.modalHeaderBadge}>
+                <Ionicons name="lock-closed" size={16} color={COLORS.primary} />
+              </View>
+              <Text style={styles.modalTitle}>Security &amp; Password</Text>
+            </View>
             <TouchableOpacity onPress={() => setChangePasswordOpen(false)} activeOpacity={0.7}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
@@ -721,7 +879,7 @@ export default function ProfileScreen() {
                 <Ionicons
                   name={passwordMsg.type === 'error' ? 'alert-circle' : 'checkmark-circle'}
                   size={18}
-                  color={passwordMsg.type === 'error' ? '#EF4444' : '#10B981'}
+                  color={COLORS.primary}
                 />
                 <Text
                   style={[
@@ -743,6 +901,7 @@ export default function ProfileScreen() {
                 placeholder="Enter current password"
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!showPassword}
+                cursorColor={COLORS.primary}
               />
             </View>
 
@@ -755,6 +914,7 @@ export default function ProfileScreen() {
                 placeholder="Enter new password"
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!showPassword}
+                cursorColor={COLORS.primary}
               />
             </View>
 
@@ -767,6 +927,7 @@ export default function ProfileScreen() {
                 placeholder="Re-enter new password"
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!showPassword}
+                cursorColor={COLORS.primary}
               />
             </View>
 
@@ -804,7 +965,7 @@ export default function ProfileScreen() {
           <View style={styles.qrModalCard}>
             <View style={styles.qrModalHeader}>
               <View style={styles.qrModalBadge}>
-                <Ionicons name="shield-checkmark" size={13} color="#22C55E" />
+                <Ionicons name="shield-checkmark" size={13} color={COLORS.primary} />
                 <Text style={styles.qrModalBadgeText}>OFFICIAL GATE PASS</Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedTicket(null)} style={styles.qrCloseBtn}>
@@ -819,7 +980,7 @@ export default function ProfileScreen() {
               {selectedTicket?.ticket_type_name || selectedTicket?.tier_name || 'Standard Admission'}
             </Text>
 
-            {/* QR Mock graphic with high-contrast container */}
+            {/* QR Graphic with High Contrast Container */}
             <View style={styles.qrGraphicContainer}>
               <View style={styles.qrGraphicBox}>
                 <Ionicons name="qr-code" size={165} color="#0F1419" />
@@ -844,8 +1005,8 @@ export default function ProfileScreen() {
                     {
                       color:
                         selectedTicket?.status === 'used' || selectedTicket?.is_used
-                          ? '#EF4444'
-                          : '#22C55E',
+                          ? COLORS.textMuted
+                          : COLORS.primary,
                     },
                   ]}
                 >
@@ -880,72 +1041,198 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     paddingBottom: SPACING.xxxl,
   },
+
+  // User Profile Card Styles
   userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: SPACING.lg,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: SPACING.xl,
-    position: 'relative',
+    gap: SPACING.md,
+  },
+  userTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
+  },
+  avatarImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    marginRight: SPACING.md,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  userInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  userName: {
+    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  verifiedIconWrap: {
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    borderRadius: RADIUS.full,
+    padding: 2,
+  },
+  userMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 1,
+  },
+  userEmail: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  userPhone: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  editIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.md,
   },
-  avatarText: {
-    color: COLORS.text,
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  userEmail: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    marginTop: 1,
-  },
-  userPhone: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: 1,
+
+  // Badges
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingTop: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSubtle,
   },
   rolePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(239, 239, 241, 0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.35)',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 3,
+  },
+  roleText: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  memberSincePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    marginTop: SPACING.xs + 2,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 3,
   },
-  roleText: {
-    color: COLORS.textSecondary,
+  memberSinceText: {
+    color: COLORS.textMuted,
     fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: '600',
   },
-  editIconBtn: {
-    padding: SPACING.sm,
+
+  // Extended Details Box
+  userDetailsBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 6,
   },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailRowText: {
+    color: COLORS.textSecondary,
+    fontSize: 12.5,
+    fontWeight: '500',
+  },
+  bioRow: {
+    marginTop: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  bioText: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+
+  // Interests / Categories Pills
+  interestsContainer: {
+    gap: 6,
+    marginTop: 2,
+  },
+  interestsLabel: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  interestsPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  interestChip: {
+    backgroundColor: 'rgba(178, 20, 20, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.25)',
+    borderRadius: RADIUS.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  interestChipText: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Guest State
   guestCard: {
     padding: SPACING.xl,
     backgroundColor: COLORS.card,
@@ -960,6 +1247,8 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,
@@ -970,8 +1259,8 @@ const styles = StyleSheet.create({
   },
   guestTitle: {
     color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     marginBottom: 4,
   },
   guestSubtitle: {
@@ -983,6 +1272,320 @@ const styles = StyleSheet.create({
   guestBtn: {
     width: '100%',
   },
+
+  // Dashboard Section
+  dashboardSection: {
+    marginBottom: SPACING.md,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  liveWalletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: RADIUS.full,
+  },
+  liveWalletText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  metricIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.full,
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  metricNumber: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  metricLabel: {
+    color: COLORS.text,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  metricSub: {
+    color: COLORS.textMuted,
+    fontSize: 9,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+
+  // Passes & Tickets Section
+  ticketsSection: {
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  ticketsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  ticketSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  ticketsSectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 0.8,
+  },
+  activePassBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.4)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: RADIUS.sm,
+  },
+  activePassBadgeText: {
+    color: COLORS.primary,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  ticketsSectionSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  fullWalletLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(178, 20, 20, 0.08)',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.25)',
+  },
+  fullWalletLinkText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  ticketSegmentRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 3,
+    gap: 4,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  ticketSegmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: RADIUS.md,
+  },
+  ticketSegmentBtnActive: {
+    backgroundColor: COLORS.primary,
+  },
+  ticketSegmentText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  ticketSegmentTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  ticketsLoader: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  ticketsLoaderText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  ticketsListWrapper: {
+    marginTop: SPACING.xs,
+  },
+  emptyTicketsCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginVertical: SPACING.xs,
+  },
+  emptyTicketsIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.sm,
+  },
+  emptyTicketsTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  emptyTicketsSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280,
+    marginBottom: SPACING.md,
+  },
+  exploreEventsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 10,
+    borderRadius: RADIUS.lg,
+  },
+  exploreEventsBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Organizer Hub Banner
+  organizerHubBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.sm,
+  },
+  organizerHubIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  organizerHubTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  organizerHubSub: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  // Admin Banner
+  adminBanner: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.4)',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md + 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.lg,
+  },
+  adminBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: 8,
+  },
+  adminIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adminBadgeSmall: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(178, 20, 20, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginBottom: 2,
+  },
+  adminBadgeSmallText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  adminBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  adminBannerSubtitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+
+  // Menu Section
   menuSection: {
     marginBottom: SPACING.xl,
   },
@@ -1021,13 +1624,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+
+  // Logout Button
   logoutBtn: {
     marginBottom: SPACING.xl,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: 'rgba(178, 20, 20, 0.45)',
   },
   logoutText: {
-    color: '#EF4444',
+    color: COLORS.primary,
+    fontWeight: '700',
   },
+
+  // App Version Info
   appInfo: {
     alignItems: 'center',
     marginVertical: SPACING.md,
@@ -1042,6 +1650,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
   },
+
+  // Modals Styles
   modalRoot: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -1053,10 +1663,21 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  modalHeaderBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
   },
   modalBody: {
@@ -1096,24 +1717,24 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   msgError: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(178, 20, 20, 0.3)',
   },
   msgSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: COLORS.primary,
   },
   msgText: {
     fontSize: 13,
     flex: 1,
   },
   msgTextError: {
-    color: '#EF4444',
+    color: COLORS.primary,
   },
   msgTextSuccess: {
-    color: '#10B981',
+    color: COLORS.text,
   },
   showPassRow: {
     flexDirection: 'row',
@@ -1125,395 +1746,11 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 13,
   },
-  adminBanner: {
-    backgroundColor: '#1E2827',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md + 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.lg,
-  },
-  adminBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-    marginRight: 8,
-  },
-  adminIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  adminBadgeSmall: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    marginBottom: 2,
-  },
-  adminBadgeSmallText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#10B981',
-    letterSpacing: 0.5,
-  },
-  adminBannerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  adminBannerSubtitle: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 1,
-  },
-
-  // Dashboard Styles
-  dashboardSection: {
-    marginBottom: SPACING.md,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-  },
-  liveWalletBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.full,
-  },
-  liveWalletText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#22C55E',
-    letterSpacing: 0.5,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-  },
-  metricIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  metricNumber: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  metricLabel: {
-    color: COLORS.text,
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  metricSub: {
-    color: COLORS.textMuted,
-    fontSize: 9,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  ticketSpotlightCard: {
-    backgroundColor: '#1E252D',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 38, 38, 0.25)',
-    marginBottom: SPACING.md,
-  },
-  spotlightHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  spotlightTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  spotlightTagText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#F59E0B',
-    letterSpacing: 0.5,
-  },
-  spotlightValidBadge: {
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: RADIUS.sm,
-  },
-  spotlightValidText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#22C55E',
-  },
-  spotlightTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  spotlightMetaRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  spotlightMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  spotlightMetaText: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-  },
-  spotlightFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  spotlightCodeLabel: {
-    color: COLORS.textMuted,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  spotlightCode: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  spotlightAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: RADIUS.sm,
-  },
-  spotlightActionText: {
-    color: COLORS.text,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  organizerHubBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    backgroundColor: '#262F38',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: SPACING.sm,
-  },
-  organizerHubIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.md,
-    backgroundColor: 'rgba(217, 38, 38, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  organizerHubTitle: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  organizerHubSub: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
-  },
-
-  // Attendee Tickets Section Styles
-  ticketsSection: {
-    marginTop: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  ticketsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  ticketSectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  ticketsSectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.textMuted,
-    letterSpacing: 0.8,
-  },
-  activePassBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: RADIUS.sm,
-  },
-  activePassBadgeText: {
-    color: '#22C55E',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  ticketsSectionSubtitle: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  fullWalletLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(217, 38, 38, 0.08)',
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 38, 38, 0.2)',
-  },
-  fullWalletLinkText: {
-    color: COLORS.accent,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  ticketSegmentRow: {
-    flexDirection: 'row',
-    backgroundColor: '#1E252D',
-    borderRadius: RADIUS.lg,
-    padding: 3,
-    gap: 4,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  ticketSegmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: RADIUS.md,
-  },
-  ticketSegmentBtnActive: {
-    backgroundColor: COLORS.accent,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  ticketSegmentText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  ticketSegmentTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  ticketsListWrapper: {
-    marginTop: SPACING.xs,
-  },
-  emptyTicketsCard: {
-    backgroundColor: '#1E252D',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginVertical: SPACING.xs,
-  },
-  emptyTicketsIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
-  emptyTicketsTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  emptyTicketsSubtitle: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
-    maxWidth: 280,
-    marginBottom: SPACING.md,
-  },
-  exploreEventsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: 10,
-    borderRadius: RADIUS.lg,
-  },
-  exploreEventsBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
 
   // QR Modal Styles
   qrModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.88)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: SPACING.lg,
@@ -1521,10 +1758,10 @@ const styles = StyleSheet.create({
   qrModalCard: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#1E252D',
+    backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: COLORS.border,
     padding: SPACING.xl,
     alignItems: 'center',
   },
@@ -1539,13 +1776,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(178, 20, 20, 0.35)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
   qrModalBadgeText: {
-    color: '#22C55E',
+    color: COLORS.primary,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -1554,7 +1793,9 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1597,7 +1838,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,

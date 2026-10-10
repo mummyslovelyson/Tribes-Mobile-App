@@ -16,36 +16,36 @@ export default function AnnouncementBar({ announcement }) {
     switch (announcement.type) {
       case 'danger':
         return {
-          bg: 'rgba(239, 68, 68, 0.15)',
-          border: 'rgba(239, 68, 68, 0.35)',
-          text: '#FCA5A5',
+          bg: 'rgba(178, 20, 20, 0.15)',
+          border: 'rgba(178, 20, 20, 0.4)',
+          text: COLORS.text,
           icon: 'alert-circle-outline',
-          iconColor: '#EF4444',
+          iconColor: COLORS.primary,
         };
       case 'warning':
         return {
-          bg: 'rgba(245, 158, 11, 0.15)',
-          border: 'rgba(245, 158, 11, 0.35)',
-          text: '#FDE68A',
+          bg: 'rgba(178, 20, 20, 0.12)',
+          border: 'rgba(178, 20, 20, 0.3)',
+          text: COLORS.text,
           icon: 'warning-outline',
-          iconColor: '#F59E0B',
+          iconColor: COLORS.primary,
         };
       case 'success':
         return {
-          bg: 'rgba(16, 185, 129, 0.15)',
-          border: 'rgba(16, 185, 129, 0.35)',
-          text: '#A7F3D0',
+          bg: 'rgba(178, 20, 20, 0.12)',
+          border: 'rgba(178, 20, 20, 0.3)',
+          text: COLORS.text,
           icon: 'checkmark-circle-outline',
-          iconColor: '#10B981',
+          iconColor: COLORS.primary,
         };
       case 'info':
       default:
         return {
-          bg: '#242B32',
-          border: '#2E363E',
+          bg: COLORS.card,
+          border: COLORS.border,
           text: COLORS.text,
           icon: 'megaphone-outline',
-          iconColor: '#38BDF8',
+          iconColor: COLORS.primary,
         };
     }
   };

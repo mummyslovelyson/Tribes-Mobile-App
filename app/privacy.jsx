@@ -192,7 +192,7 @@ export default function PrivacyPolicyScreen() {
           <Text style={styles.effectiveText}>Effective Date: {EFFECTIVE_DATE}</Text>
 
           <View style={styles.alertBox}>
-            <Ionicons name="information-circle" size={20} color="#F59E0B" style={{ marginTop: 2 }} />
+            <Ionicons name="information-circle" size={20} color={COLORS.primary} style={{ marginTop: 2 }} />
             <View style={{ flex: 1 }}>
               <Text style={styles.alertHeading}>PLEASE READ CAREFULLY</Text>
               <Text style={styles.alertBody}>
@@ -210,13 +210,13 @@ export default function PrivacyPolicyScreen() {
           </Text>
 
           <View style={styles.promiseRow}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
             <Text style={styles.promiseText}>
               We will never sell or give away your personal details to third parties.
             </Text>
           </View>
           <View style={styles.promiseRow}>
-            <Ionicons name="lock-closed" size={18} color="#10B981" />
+            <Ionicons name="lock-closed" size={18} color={COLORS.primary} />
             <Text style={styles.promiseText}>
               We employ state-of-the-art encryption to protect your data from unauthorized access.
             </Text>
@@ -378,16 +378,16 @@ const styles = StyleSheet.create({
   },
   alertBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: 'rgba(178, 20, 20, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: 'rgba(178, 20, 20, 0.35)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginTop: SPACING.lg,
     gap: SPACING.sm,
   },
   alertHeading: {
-    color: '#F59E0B',
+    color: COLORS.primary,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,

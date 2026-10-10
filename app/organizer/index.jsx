@@ -558,7 +558,7 @@ export default function OrganizerDashboardScreen() {
           /* Refunds Tab (Policy Clause 5 SLA) */
           <View style={styles.tabContent}>
             <View style={styles.refundPolicyNotice}>
-              <Ionicons name="time" size={16} color="#F59E0B" />
+              <Ionicons name="time" size={16} color={COLORS.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.refundPolicyNoticeTitle}>24-Hour Review SLA (Policy Clause 5)</Text>
                 <Text style={styles.refundPolicyNoticeDesc}>
@@ -635,8 +635,8 @@ export default function OrganizerDashboardScreen() {
 
                       {isPending && (
                         <View style={[styles.slaTimerBox, isExpired && styles.slaTimerBoxExpired]}>
-                          <Ionicons name="stopwatch-outline" size={13} color={isExpired ? '#EF4444' : '#F59E0B'} />
-                          <Text style={[styles.slaTimerText, isExpired && { color: '#EF4444' }]}>
+                          <Ionicons name="stopwatch-outline" size={13} color={COLORS.primary} />
+                          <Text style={[styles.slaTimerText, isExpired && { color: COLORS.primary }]}>
                             {slaText}
                           </Text>
                         </View>
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabBadge: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
     borderRadius: RADIUS.full,
     paddingHorizontal: 6,
     paddingVertical: 1,
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabBadgeText: {
-    color: '#0E1216',
+    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -1148,9 +1148,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
-  refundBadgeTextPending: { color: '#F59E0B' },
-  refundBadgeTextApproved: { color: '#4ADE80' },
-  refundBadgeTextDeclined: { color: '#F87171' },
+  refundBadgeTextPending: { color: COLORS.primary },
+  refundBadgeTextApproved: { color: COLORS.text },
+  refundBadgeTextDeclined: { color: COLORS.primary },
   refundBody: {
     gap: 4,
   },
@@ -1203,7 +1203,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   slaTimerText: {
-    color: '#F59E0B',
+    color: COLORS.primary,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -1221,15 +1221,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(178, 20, 20, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(178, 20, 20, 0.3)',
     paddingHorizontal: SPACING.md,
     paddingVertical: 7,
     borderRadius: RADIUS.md,
   },
   declineBtnText: {
-    color: '#EF4444',
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1237,13 +1237,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: SPACING.md,
     paddingVertical: 7,
     borderRadius: RADIUS.md,
   },
   authorizeBtnText: {
-    color: '#0E1216',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },

@@ -399,7 +399,7 @@ export default function GoogleAuthButton({
 
             {/* Secure Badge Footer */}
             <View style={styles.modalFooter}>
-              <Ionicons name="shield-checkmark-outline" size={13} color="#22C55E" />
+              <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.primary} />
               <Text style={styles.modalFooterText}>
                 Google OAuth Verified &amp; Encrypted Session
               </Text>

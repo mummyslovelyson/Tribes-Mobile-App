@@ -138,9 +138,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   statusActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderColor: 'rgba(178, 20, 20, 0.4)',
   },
   statusUsed: {
     backgroundColor: 'rgba(148, 149, 153, 0.15)',
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusTextActive: {
-    color: '#10B981',
+    color: COLORS.primary,
   },
   statusTextUsed: {
     color: COLORS.textMuted,

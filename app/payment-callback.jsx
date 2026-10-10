@@ -106,7 +106,7 @@ export default function PaymentCallbackScreen() {
         ) : verified ? (
           <>
             <View style={styles.successIconCircle}>
-              <Ionicons name="checkmark-circle" size={54} color="#22C55E" />
+              <Ionicons name="checkmark-circle" size={54} color={COLORS.primary} />
             </View>
 
             <Text style={styles.title}>Payment Confirmed!</Text>
@@ -194,9 +194,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
     borderWidth: 2,
-    borderColor: 'rgba(34, 197, 94, 0.4)',
+    borderColor: 'rgba(178, 20, 20, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,

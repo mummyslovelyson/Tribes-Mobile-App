@@ -507,7 +507,7 @@ export default function EventDetailsScreen() {
                           key={star}
                           name={star <= (rev.rating || 5) ? 'star' : 'star-outline'}
                           size={12}
-                          color="#F59E0B"
+                          color={COLORS.primary}
                           style={{ marginRight: 2 }}
                         />
                       ))}
@@ -686,7 +686,7 @@ export default function EventDetailsScreen() {
         <View style={styles.successModalBackdrop}>
           <View style={styles.successModalCard}>
             <View style={styles.successIconCircle}>
-              <Ionicons name="checkmark-circle" size={48} color="#22C55E" />
+              <Ionicons name="checkmark-circle" size={48} color={COLORS.primary} />
             </View>
 
             <Text style={styles.successTitle}>Booking Confirmed!</Text>
@@ -797,7 +797,7 @@ export default function EventDetailsScreen() {
                   <Ionicons
                     name={star <= ratingInput ? 'star' : 'star-outline'}
                     size={32}
-                    color="#F59E0B"
+                    color={COLORS.primary}
                   />
                 </TouchableOpacity>
               ))}
@@ -1282,11 +1282,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   discountLabel: {
-    color: '#10B981',
+    color: COLORS.primary,
     fontSize: 13,
   },
   discountValue: {
-    color: '#10B981',
+    color: COLORS.primary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1394,7 +1394,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md,

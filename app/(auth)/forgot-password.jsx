@@ -132,7 +132,7 @@ export default function ForgotPasswordScreen() {
 
         {successMessage ? (
           <View style={styles.successBanner}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
             <Text style={styles.successBannerText}>{successMessage}</Text>
           </View>
         ) : null}
@@ -317,15 +317,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(178, 20, 20, 0.35)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
   },
   successBannerText: {
-    color: '#10B981',
+    color: COLORS.text,
     fontSize: 13,
     flex: 1,
     lineHeight: 18,

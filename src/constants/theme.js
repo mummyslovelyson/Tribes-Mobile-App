@@ -44,11 +44,11 @@ export const COLORS = {
   silver: '#CBD5E1',           // tc-silver
   white: '#FFFFFF',
 
-  // Status Colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
+  // Status Colors (Strictly Logo Palette: Brand Red, Silver, Off-White, Charcoal)
+  success: '#FFFFFF',
+  warning: '#CBD5E1',
+  error: '#b21414',
+  info: '#CBD5E1',
 };
 
 export const SPACING = {

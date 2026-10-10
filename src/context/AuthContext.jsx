@@ -215,6 +215,8 @@ export const AuthProvider = ({ children }) => {
         ['tc_user', userStr],
         ['@auth_user', userStr],
       ]);
+    } else {
+      await refreshProfile();
     }
     return data;
   };

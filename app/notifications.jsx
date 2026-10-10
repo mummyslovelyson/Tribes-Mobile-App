@@ -92,34 +92,34 @@ export default function NotificationsScreen() {
       case 'ticket':
         return {
           icon: 'ticket-outline',
-          color: '#38BDF8',
-          bg: 'rgba(56, 189, 248, 0.12)',
+          color: COLORS.primary,
+          bg: 'rgba(178, 20, 20, 0.12)',
         };
       case 'order':
       case 'payment':
         return {
-          icon: 'checkmark-circle-outline',
-          color: '#10B981',
-          bg: 'rgba(16, 185, 129, 0.12)',
+          icon: 'receipt-outline',
+          color: COLORS.primary,
+          bg: 'rgba(178, 20, 20, 0.12)',
         };
       case 'reminder':
       case 'event':
         return {
           icon: 'calendar-outline',
-          color: '#F59E0B',
-          bg: 'rgba(245, 158, 11, 0.12)',
+          color: COLORS.textSecondary,
+          bg: 'rgba(203, 213, 225, 0.1)',
         };
       case 'account':
       case 'security':
         return {
           icon: 'shield-checkmark-outline',
-          color: '#818CF8',
-          bg: 'rgba(129, 140, 248, 0.12)',
+          color: COLORS.primary,
+          bg: 'rgba(178, 20, 20, 0.12)',
         };
       default:
         return {
           icon: 'notifications-outline',
-          color: '#CBD5E1',
+          color: COLORS.textSecondary,
           bg: 'rgba(203, 213, 225, 0.08)',
         };
     }
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#38BDF8',
+    backgroundColor: COLORS.primary,
     marginLeft: SPACING.xs,
   },
   cardMessage: {

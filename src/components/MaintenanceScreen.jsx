@@ -53,7 +53,7 @@ export default function MaintenanceScreen({ maintenance, onRetry }) {
         {/* Center Card */}
         <View style={styles.card}>
           <View style={styles.iconCircle}>
-            <Ionicons name="construct-outline" size={36} color="#F59E0B" />
+            <Ionicons name="construct-outline" size={36} color={COLORS.primary} />
           </View>
 
           <Text style={styles.title}>Scheduled System Update</Text>
@@ -142,24 +142,24 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: 'rgba(178, 20, 20, 0.35)',
     gap: 6,
   },
   statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FDE68A',
+    color: COLORS.textSecondary,
   },
   card: {
     backgroundColor: COLORS.card,

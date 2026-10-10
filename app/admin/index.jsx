@@ -457,14 +457,14 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
             </TouchableOpacity>
           ) : (
             <View style={styles.tabHeaderIconWrap}>
-              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+              <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
             </View>
           )}
           <View>
             <View style={styles.badgeRow}>
               <Text style={styles.headerTitle}>Admin Control Center</Text>
               <View style={styles.adminBadge}>
-                <Ionicons name="shield-checkmark" size={10} color="#10B981" />
+                <Ionicons name="shield-checkmark" size={10} color={COLORS.primary} />
                 <Text style={styles.adminBadgeText}>ADMIN</Text>
               </View>
             </View>
@@ -553,8 +553,8 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               <View style={styles.statsGrid}>
                 {/* Revenue Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                    <Ionicons name="cash-outline" size={20} color="#10B981" />
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.12)' }]}>
+                    <Ionicons name="cash-outline" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.statLabel}>Total Revenue</Text>
                   <Text style={styles.statValue}>
@@ -567,8 +567,8 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
 
                 {/* Events Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}>
-                    <Ionicons name="calendar-outline" size={20} color="#38BDF8" />
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(203, 213, 225, 0.1)' }]}>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                   </View>
                   <Text style={styles.statLabel}>Total Events</Text>
                   <Text style={styles.statValue}>{stats?.events || 0}</Text>
@@ -579,8 +579,8 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
 
                 {/* Users Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
-                    <Ionicons name="people-outline" size={20} color="#A855F7" />
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.12)' }]}>
+                    <Ionicons name="people-outline" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.statLabel}>Registered Users</Text>
                   <Text style={styles.statValue}>{stats?.users || 0}</Text>
@@ -591,8 +591,8 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
 
                 {/* Tickets Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-                    <Ionicons name="ticket-outline" size={20} color="#F59E0B" />
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.12)' }]}>
+                    <Ionicons name="ticket-outline" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.statLabel}>Tickets Issued</Text>
                   <Text style={styles.statValue}>{stats?.tickets || 0}</Text>
@@ -603,7 +603,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               {/* Pending Approvals Notice */}
               {(Number(stats?.pendingEvents) > 0 || Number(stats?.pendingOrganizers) > 0 || Number(stats?.pendingWithdrawals) > 0) && (
                 <View style={styles.alertNotice}>
-                  <Ionicons name="alert-circle-outline" size={22} color="#F59E0B" />
+                  <Ionicons name="alert-circle-outline" size={22} color={COLORS.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.alertNoticeTitle}>Items Awaiting Your Review</Text>
                     <Text style={styles.alertNoticeText}>
@@ -717,9 +717,9 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
                         <Ionicons
                           name={ev.is_featured ? 'star' : 'star-outline'}
                           size={15}
-                          color={ev.is_featured ? '#F59E0B' : COLORS.textSecondary}
+                          color={ev.is_featured ? COLORS.primary : COLORS.textSecondary}
                         />
-                        <Text style={[styles.btnActionText, ev.is_featured && { color: '#F59E0B' }]}>
+                        <Text style={[styles.btnActionText, ev.is_featured && { color: COLORS.primary }]}>
                           {ev.is_featured ? 'Featured' : 'Feature'}
                         </Text>
                       </TouchableOpacity>
@@ -929,7 +929,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Text style={styles.itemTitle}>{u.name || 'User'}</Text>
                             {isVerified && (
-                              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                              <Ionicons name="checkmark-circle" size={14} color={COLORS.primary} />
                             )}
                           </View>
                           <Text style={styles.itemSubtitle}>{u.email}</Text>
@@ -999,8 +999,8 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               {/* Maintenance Toggle Card */}
               <View style={styles.controlCard}>
                 <View style={styles.controlHeader}>
-                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                    <Ionicons name="construct-outline" size={22} color="#F59E0B" />
+                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.15)' }]}>
+                    <Ionicons name="construct-outline" size={22} color={COLORS.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.controlTitle}>Maintenance Lock Screen</Text>
@@ -1033,8 +1033,8 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               {/* Announcement Toggle Card */}
               <View style={styles.controlCard}>
                 <View style={styles.controlHeader}>
-                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
-                    <Ionicons name="megaphone-outline" size={22} color="#38BDF8" />
+                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.15)' }]}>
+                    <Ionicons name="megaphone-outline" size={22} color={COLORS.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.controlTitle}>In-App Announcement Bar</Text>
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
   adminBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#10B981',
+    color: COLORS.primary,
     letterSpacing: 0.5,
   },
   headerTitle: {
@@ -1383,7 +1383,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   alertNoticeBtn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: RADIUS.sm,
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
   alertNoticeBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1C232B',
+    color: '#FFFFFF',
   },
   filterPills: {
     flexDirection: 'row',
@@ -1481,15 +1481,15 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   btnSuccess: {
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.primary,
   },
   btnDanger: {
-    backgroundColor: '#EF4444',
+    backgroundColor: COLORS.primary,
   },
   btnFeatured: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderColor: 'rgba(178, 20, 20, 0.4)',
   },
   btnOutline: {
     backgroundColor: COLORS.surface,
@@ -1565,10 +1565,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnToggleAmber: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
   },
   btnToggleSky: {
-    backgroundColor: '#0284C7',
+    backgroundColor: COLORS.primary,
   },
   btnToggleDefault: {
     backgroundColor: COLORS.surface,

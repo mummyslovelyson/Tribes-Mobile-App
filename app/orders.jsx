@@ -191,12 +191,12 @@ export default function OrdersScreen() {
           <View style={styles.badgeRow}>
             {isRefundPending ? (
               <View style={styles.statusRefundPending}>
-                <Ionicons name="time-outline" size={11} color="#F59E0B" />
+                <Ionicons name="time-outline" size={11} color={COLORS.primary} />
                 <Text style={styles.statusTextRefundPending}>24H REVIEW SLA</Text>
               </View>
             ) : isRefunded ? (
               <View style={styles.statusRefunded}>
-                <Ionicons name="checkmark-done" size={11} color="#38BDF8" />
+                <Ionicons name="checkmark-done" size={11} color={COLORS.textSecondary} />
                 <Text style={styles.statusTextRefunded}>REFUNDED</Text>
               </View>
             ) : isCancelled ? (
@@ -242,7 +242,7 @@ export default function OrdersScreen() {
         {/* Clause 5 SLA Review Callout Banner */}
         {isRefundPending && (
           <View style={styles.slaCallout}>
-            <Ionicons name="shield-checkmark" size={15} color="#F59E0B" style={{ marginTop: 1 }} />
+            <Ionicons name="shield-checkmark" size={15} color={COLORS.primary} style={{ marginTop: 1 }} />
             <View style={{ flex: 1 }}>
               <Text style={styles.slaCalloutTitle}>Refund Request Under Review</Text>
               <Text style={styles.slaCalloutDesc}>
@@ -284,7 +284,7 @@ export default function OrdersScreen() {
                 activeOpacity={0.8}
                 onPress={() => handleOpenRefundModal(item)}
               >
-                <Ionicons name="return-up-back" size={14} color="#F59E0B" />
+                <Ionicons name="return-up-back" size={14} color={COLORS.primary} />
                 <Text style={styles.refundBtnText}>Refund</Text>
               </TouchableOpacity>
             )}
@@ -389,7 +389,7 @@ export default function OrdersScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderIcon}>
-                <Ionicons name="shield-checkmark" size={18} color="#F59E0B" />
+                <Ionicons name="shield-checkmark" size={18} color={COLORS.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Request Refund</Text>
@@ -444,7 +444,7 @@ export default function OrdersScreen() {
 
               {/* SLA Guarantee Note */}
               <View style={styles.slaNoticeBox}>
-                <Ionicons name="time" size={16} color="#38BDF8" style={{ marginTop: 1 }} />
+                <Ionicons name="time" size={16} color={COLORS.primary} style={{ marginTop: 1 }} />
                 <Text style={styles.slaNoticeText}>
                   Under Clause 5, the Event Organizer has 24 hours to respond. If they do not respond within 1 day, TRIBESANDCLIQS will intervene to execute the refund.
                 </Text>
@@ -632,15 +632,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusPending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: 'rgba(178, 20, 20, 0.3)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
   statusTextPending: {
-    color: '#F59E0B',
+    color: COLORS.primary,
     fontSize: 10,
     fontWeight: '800',
   },
@@ -648,15 +648,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(178, 20, 20, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderColor: 'rgba(178, 20, 20, 0.4)',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
   statusTextRefundPending: {
-    color: '#F59E0B',
+    color: COLORS.primary,
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -665,28 +665,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
+    borderColor: COLORS.border,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
   statusTextRefunded: {
-    color: '#38BDF8',
+    color: COLORS.textSecondary,
     fontSize: 10,
     fontWeight: '800',
   },
   statusCancelled: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(178, 20, 20, 0.3)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
   },
   statusTextCancelled: {
-    color: '#F87171',
+    color: COLORS.primary,
     fontSize: 10,
     fontWeight: '800',
   },
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   slaCalloutDeadline: {
-    color: '#F59E0B',
+    color: COLORS.primary,
     fontSize: 10,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginTop: 4,
@@ -793,15 +793,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: 'rgba(178, 20, 20, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: 'rgba(178, 20, 20, 0.35)',
     paddingHorizontal: SPACING.sm + 2,
     paddingVertical: 6,
     borderRadius: RADIUS.md,
   },
   refundBtnText: {
-    color: '#F59E0B',
+    color: COLORS.primary,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -973,8 +973,8 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   groundCardSelected: {
-    borderColor: '#F59E0B',
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(178, 20, 20, 0.1)',
   },
   groundHeader: {
     flexDirection: 'row',
@@ -991,13 +991,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleSelected: {
-    borderColor: '#F59E0B',
+    borderColor: COLORS.primary,
   },
   radioDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
   },
   groundTitle: {
     color: COLORS.text,
@@ -1006,7 +1006,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   groundTitleSelected: {
-    color: '#FBBF24',
+    color: COLORS.primary,
   },
   groundDesc: {
     color: COLORS.textMuted,
@@ -1077,10 +1077,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: RADIUS.md,
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
   },
   modalSubmitBtnText: {
-    color: '#0E1216',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
