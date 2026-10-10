@@ -1080,7 +1080,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   modalSubmitBtnText: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontSize: 13,
     fontWeight: '700',
   },

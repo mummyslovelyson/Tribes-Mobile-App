@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabBadgeText: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontSize: 10,
     fontWeight: '800',
   },
@@ -1243,7 +1243,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   authorizeBtnText: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontSize: 12,
     fontWeight: '700',
   },

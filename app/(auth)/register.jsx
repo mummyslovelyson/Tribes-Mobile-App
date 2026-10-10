@@ -612,7 +612,7 @@ export default function RegisterScreen() {
                 <Text style={styles.nextBtnText}>
                   {loading ? 'Creating...' : 'Create Account'}
                 </Text>
-                <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.buttonText} />
               </TouchableOpacity>
             </View>
           </View>
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   roleTabTextActive: {
-    color: COLORS.white,
+    color: COLORS.buttonText,
     fontWeight: '800',
   },
   errorBanner: {
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   categoryChipTextActive: {
-    color: COLORS.white,
+    color: COLORS.buttonText,
     fontWeight: '700',
   },
   primaryActionBtn: {
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   nextBtnText: {
-    color: COLORS.white,
+    color: COLORS.buttonText,
     fontSize: 13,
     fontWeight: '700',
   },

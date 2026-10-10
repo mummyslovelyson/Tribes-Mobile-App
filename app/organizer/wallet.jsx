@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   methodToggleTextActive: {
-    color: COLORS.white,
+    color: COLORS.buttonText,
   },
   providerRow: {
     flexDirection: 'row',

@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   categoryPillTextActive: {
-    color: COLORS.white,
+    color: COLORS.buttonText,
   },
   tierHeaderRow: {
     flexDirection: 'row',

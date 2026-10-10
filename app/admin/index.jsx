@@ -1291,7 +1291,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   tabButtonTextActive: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontWeight: '900',
   },
   scroll: {
@@ -1374,11 +1374,11 @@ const styles = StyleSheet.create({
   alertNoticeTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FDE68A',
+    color: COLORS.text,
   },
   alertNoticeText: {
     fontSize: 11,
-    color: '#FDE68A',
+    color: COLORS.textSecondary,
     opacity: 0.9,
     marginTop: 2,
   },
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
   alertNoticeBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
   },
   filterPills: {
     flexDirection: 'row',
@@ -1499,7 +1499,7 @@ const styles = StyleSheet.create({
   btnActionText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
   },
   searchWrap: {
     flexDirection: 'row',
@@ -1578,7 +1578,7 @@ const styles = StyleSheet.create({
   btnToggleText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
   },
   bannerHeaderRow: {
     flexDirection: 'row',
@@ -1598,7 +1598,7 @@ const styles = StyleSheet.create({
   btnAddBannerText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
   },
   bannerFormCard: {
     backgroundColor: COLORS.card,
@@ -1633,7 +1633,7 @@ const styles = StyleSheet.create({
   btnSubmitBannerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
   },
   bannerRowCard: {
     flexDirection: 'row',
@@ -1689,7 +1689,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontSize: 14,
     fontWeight: '600',
   },

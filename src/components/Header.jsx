@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandLetter: {
-    color: COLORS.text,
+    color: COLORS.buttonText,
     fontSize: 18,
     fontWeight: '900',
   },

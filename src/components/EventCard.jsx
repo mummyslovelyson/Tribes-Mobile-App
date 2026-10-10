@@ -194,9 +194,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   priceText: {
-    color: COLORS.text,
+    color: COLORS.buttonText,
     fontSize: 11,
     fontWeight: '800',
+    letterSpacing: 0.2,
   },
   content: {
     padding: SPACING.lg,

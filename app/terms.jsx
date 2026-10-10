@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
   },
   emailButtonText: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontWeight: '800',
     fontSize: 14,
   },
