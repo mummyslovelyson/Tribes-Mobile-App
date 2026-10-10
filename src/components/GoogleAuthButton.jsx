@@ -157,87 +157,6 @@ export default function GoogleAuthButton({
     handleSelectAccount({ email: trimmed.toLowerCase(), name });
   };
 
-  const handleWebBrowserOAuth = async () => {
-    setModalLoading(true);
-    setModalError('');
-    try {
-      const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-      const apiBaseUrl = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/api\/?$/, '');
-      const backendCallback = apiBaseUrl ? `${apiBaseUrl}/api/auth/callback` : '';
-      const appRedirect = 'tribescliqs://auth-callback';
-
-      if (!clientId || !backendCallback) {
-        setModalError('Google Web Client ID or Backend API URL is missing.');
-        return;
-      }
-
-      const googleAuthUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${encodeURIComponent(clientId)}` +
-        `&redirect_uri=${encodeURIComponent(backendCallback)}` +
-        `&response_type=token%20id_token` +
-        `&scope=${encodeURIComponent('openid profile email')}` +
-        `&nonce=${Date.now()}` +
-        `&prompt=select_account` +
-        `&state=${encodeURIComponent(appRedirect)}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(googleAuthUrl, appRedirect);
-
-      if (result?.type === 'success' && result?.url) {
-        const returnUrl = result.url;
-        let paramString = '';
-        if (returnUrl.includes('#') && returnUrl.includes('?')) {
-          const [beforeHash, hashPart] = returnUrl.split('#');
-          const queryPart = beforeHash.split('?')[1] || '';
-          paramString = `${queryPart}&${hashPart}`;
-        } else if (returnUrl.includes('#')) {
-          paramString = returnUrl.split('#')[1] || '';
-        } else if (returnUrl.includes('?')) {
-          paramString = returnUrl.split('?')[1] || '';
-        }
-
-        const urlParams = new URLSearchParams(paramString);
-        const idToken = urlParams.get('id_token');
-        const accessToken = urlParams.get('access_token');
-        let email = urlParams.get('email');
-        let name = urlParams.get('name');
-        let picture = urlParams.get('picture');
-
-        if (accessToken && !email) {
-          try {
-            const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
-            if (profileRes.ok) {
-              const profileData = await profileRes.json();
-              email = profileData.email;
-              name = profileData.name || profileData.given_name;
-              picture = profileData.picture;
-            }
-          } catch (profileErr) {
-            console.warn('[GoogleAuthButton] Google profile fetch fallback:', profileErr?.message);
-          }
-        }
-
-        if (idToken || accessToken || email) {
-          await submitGoogleAuth({
-            idToken: idToken || undefined,
-            accessToken: accessToken || undefined,
-            email: email || undefined,
-            name: name || undefined,
-            picture: picture || undefined,
-          });
-          setShowModal(false);
-          return;
-        }
-      }
-    } catch (browserErr) {
-      console.warn('[GoogleAuthButton] WebBrowser OAuth error:', browserErr?.message);
-      setModalError(browserErr?.message || 'Browser sign-in could not be completed.');
-    } finally {
-      setModalLoading(false);
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     try {
@@ -443,25 +362,13 @@ export default function GoogleAuthButton({
                   </View>
                 </View>
               )}
-              {/* Alternative Browser OAuth Trigger */}
-              <TouchableOpacity
-                style={styles.browserOAuthRow}
-                onPress={handleWebBrowserOAuth}
-                disabled={modalLoading}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="globe-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.browserOAuthText}>
-                  {modalLoading ? 'Connecting...' : 'Or sign in with Google in web browser'}
-                </Text>
-              </TouchableOpacity>
             </ScrollView>
 
             {/* Secure Badge Footer */}
             <View style={styles.modalFooter}>
               <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.textSecondary} />
               <Text style={styles.modalFooterText}>
-                Google OAuth Verified &amp; Encrypted Session
+                Firebase Google Authentication • Encrypted Session
               </Text>
             </View>
           </KeyboardAvoidingView>
@@ -695,22 +602,6 @@ const styles = StyleSheet.create({
     color: COLORS.buttonText,
     fontSize: 12,
     fontWeight: '700',
-  },
-  browserOAuthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: SPACING.md,
-    marginTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  browserOAuthText: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
   },
   modalFooter: {
     flexDirection: 'row',
