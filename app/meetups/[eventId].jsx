@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
   leaveBtn: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: 'rgba(203, 213, 225, 0.4)',
   },
   joinBtnText: {
     color: COLORS.buttonText,

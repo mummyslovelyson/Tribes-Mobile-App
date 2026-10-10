@@ -328,7 +328,7 @@ export default function TermsOfServiceScreen() {
             {section.prohibitedCategories && (
               <View style={styles.prohibitedCard}>
                 <View style={styles.prohibitedHeaderRow}>
-                  <Ionicons name="warning-outline" size={16} color=COLORS.textSecondary />
+                  <Ionicons name="warning-outline" size={16} color={COLORS.textSecondary} />
                   <Text style={styles.prohibitedTitle}>EXPRESSLY PROHIBITED ACTIVITIES & SERVICES</Text>
                 </View>
                 <View style={{ gap: 4, marginTop: 4 }}>
@@ -585,9 +585,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   prohibitedCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.07)',
+    backgroundColor: 'rgba(203, 213, 225, 0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: 'rgba(203, 213, 225, 0.25)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginTop: SPACING.xs,

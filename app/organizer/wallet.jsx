@@ -544,8 +544,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   statusError: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(203, 213, 225, 0.1)',
+    borderColor: 'rgba(203, 213, 225, 0.3)',
   },
   statusPillText: {
     fontSize: 10,

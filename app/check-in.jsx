@@ -138,7 +138,7 @@ export default function CheckInScreen() {
           {/* Error Banner */}
           {errorMsg ? (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={20} color=COLORS.textSecondary />
+              <Ionicons name="alert-circle-outline" size={20} color={COLORS.textSecondary} />
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           ) : null}

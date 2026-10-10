@@ -125,7 +125,7 @@ export default function ForgotPasswordScreen() {
         {/* Error / Success Notifications */}
         {errorMessage ? (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={18} color=COLORS.textSecondary />
+            <Ionicons name="alert-circle" size={18} color={COLORS.textSecondary} />
             <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -300,9 +300,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: 'rgba(203, 213, 225, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(203, 213, 225, 0.3)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.lg,

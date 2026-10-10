@@ -185,7 +185,7 @@ export default function PrivacyPolicyScreen() {
         {/* Hero Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroBadge}>
-            <Ionicons name="shield-checkmark" size={24} color=COLORS.textSecondary />
+            <Ionicons name="shield-checkmark" size={24} color={COLORS.textSecondary} />
           </View>
           <Text style={styles.heroTitle}>TRIBESANDCLIQS LIMITED</Text>
           <Text style={styles.heroSubtitle}>Official Privacy Statement</Text>

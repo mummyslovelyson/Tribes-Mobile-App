@@ -1173,7 +1173,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
                       onPress={() => handleDeleteBanner(b)}
                       disabled={actionId === b.id}
                     >
-                      <Ionicons name="trash-outline" size={16} color=COLORS.textSecondary />
+                      <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                   </View>
                 ))
@@ -1453,7 +1453,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
   },
   statusDanger: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(203, 213, 225, 0.15)',
   },
   statusDefault: {
     backgroundColor: '#2E363E',

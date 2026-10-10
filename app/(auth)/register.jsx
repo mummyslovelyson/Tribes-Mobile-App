@@ -254,7 +254,7 @@ export default function RegisterScreen() {
         {/* Error Notification */}
         {errorMessage ? (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={18} color=COLORS.textSecondary />
+            <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} />
             <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
         ) : null}

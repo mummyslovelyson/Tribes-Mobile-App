@@ -516,7 +516,7 @@ export default function OrganizerDashboardScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.eventActionBtn, { borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                      style={[styles.eventActionBtn, { borderColor: 'rgba(203, 213, 225, 0.3)' }]}
                       onPress={() => handleDeleteEvent(item)}
                     >
                       <Ionicons name="trash-outline" size={16} color={COLORS.error} />
@@ -649,7 +649,7 @@ export default function OrganizerDashboardScreen() {
                           style={styles.declineBtn}
                           onPress={() => handleOpenDeclineModal(req)}
                         >
-                          <Ionicons name="close" size={14} color=COLORS.textSecondary />
+                          <Ionicons name="close" size={14} color={COLORS.textSecondary} />
                           <Text style={styles.declineBtnText}>Decline</Text>
                         </TouchableOpacity>
 
@@ -683,8 +683,8 @@ export default function OrganizerDashboardScreen() {
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Ionicons name="close-circle" size={18} color=COLORS.textSecondary />
+              <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(203, 213, 225, 0.15)' }]}>
+                <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Decline Refund</Text>
@@ -1140,9 +1140,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(34, 197, 94, 0.3)',
   },
   refundBadgeDeclined: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(203, 213, 225, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(203, 213, 225, 0.3)',
   },
   refundBadgeText: {
     fontSize: 10,
@@ -1200,7 +1200,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   slaTimerBoxExpired: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(203, 213, 225, 0.1)',
   },
   slaTimerText: {
     color: COLORS.primary,

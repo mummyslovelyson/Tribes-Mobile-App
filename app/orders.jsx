@@ -296,7 +296,7 @@ export default function OrdersScreen() {
                 activeOpacity={0.8}
                 onPress={() => handleOpenCancelModal(item)}
               >
-                <Ionicons name="close-circle-outline" size={14} color=COLORS.textSecondary />
+                <Ionicons name="close-circle-outline" size={14} color={COLORS.textSecondary} />
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             )}
@@ -501,8 +501,8 @@ export default function OrdersScreen() {
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Ionicons name="close-circle" size={18} color=COLORS.textSecondary />
+              <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(203, 213, 225, 0.15)' }]}>
+                <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Cancel Booking</Text>
@@ -809,9 +809,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(203, 213, 225, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(203, 213, 225, 0.3)',
     paddingHorizontal: SPACING.sm + 2,
     paddingVertical: 6,
     borderRadius: RADIUS.md,
