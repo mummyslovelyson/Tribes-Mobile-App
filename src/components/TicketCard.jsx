@@ -16,7 +16,21 @@ export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
     });
   };
 
+  const isRefunded = ticket.status === 'refunded' || ticket.payment_status === 'refunded';
+  const isCancelled = ticket.status === 'cancelled' || ticket.event_status === 'cancelled';
+  const isTransferred = ticket.status === 'transferred';
   const isUsed = ticket.status === 'used' || ticket.is_used;
+  const isValid = !isRefunded && !isCancelled && !isTransferred && !isUsed;
+
+  const getStatusBadge = () => {
+    if (isRefunded) return { label: 'REFUNDED', badgeStyle: styles.statusUsed, textStyle: styles.statusTextUsed };
+    if (isCancelled) return { label: 'CANCELLED', badgeStyle: styles.statusUsed, textStyle: styles.statusTextUsed };
+    if (isTransferred) return { label: 'TRANSFERRED', badgeStyle: styles.statusUsed, textStyle: styles.statusTextUsed };
+    if (isUsed) return { label: 'USED', badgeStyle: styles.statusUsed, textStyle: styles.statusTextUsed };
+    return { label: 'VALID', badgeStyle: styles.statusActive, textStyle: styles.statusTextActive };
+  };
+
+  const statusBadge = getStatusBadge();
 
   return (
     <View style={styles.card}>
@@ -31,9 +45,9 @@ export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
           </Text>
         </View>
 
-        <View style={[styles.statusBadge, isUsed ? styles.statusUsed : styles.statusActive]}>
-          <Text style={[styles.statusText, isUsed ? styles.statusTextUsed : styles.statusTextActive]}>
-            {isUsed ? 'USED' : 'VALID'}
+        <View style={[styles.statusBadge, statusBadge.badgeStyle]}>
+          <Text style={[styles.statusText, statusBadge.textStyle]}>
+            {statusBadge.label}
           </Text>
         </View>
       </View>
@@ -75,7 +89,7 @@ export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
         </View>
 
         <View style={styles.footerActions}>
-          {!isUsed && onTransferPress && (
+          {isValid && onTransferPress && (
             <TouchableOpacity
               style={styles.transferButton}
               activeOpacity={0.8}
@@ -86,14 +100,16 @@ export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            style={styles.qrButton}
-            activeOpacity={0.8}
-            onPress={() => onQrPress && onQrPress(ticket)}
-          >
-            <Ionicons name="qr-code-outline" size={16} color={COLORS.text} />
-            <Text style={styles.qrButtonText}>Show QR</Text>
-          </TouchableOpacity>
+          {(isValid || isUsed) && (
+            <TouchableOpacity
+              style={styles.qrButton}
+              activeOpacity={0.8}
+              onPress={() => onQrPress && onQrPress(ticket)}
+            >
+              <Ionicons name="qr-code-outline" size={16} color={COLORS.text} />
+              <Text style={styles.qrButtonText}>Show QR</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>

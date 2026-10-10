@@ -75,10 +75,47 @@ export default function ProfileScreen() {
       ]);
 
       if (ticketsData.status === 'fulfilled') {
-        const list = ticketsData.value?.tickets || ticketsData.value || [];
+        const list = Array.isArray(ticketsData.value)
+          ? ticketsData.value
+          : ticketsData.value?.tickets || [];
         setTickets(list);
-        const activeList = list.filter((t) => t.status === 'active' || !t.is_used);
-        const pastList = list.filter((t) => t.status === 'used' || t.is_used);
+
+        const now = new Date();
+
+        // 1. Strictly valid, upcoming active passes
+        const activeList = list.filter((t) => {
+          if (!t) return false;
+          const status = String(t.status || '').toLowerCase();
+          if (['transferred', 'cancelled', 'refunded', 'void'].includes(status)) return false;
+          if (t.payment_status === 'refunded' || t.payment_status === 'failed') return false;
+          if (t.event_status === 'cancelled') return false;
+          if (t.is_used || status === 'used') return false;
+
+          const evtDate = t.end_date || t.start_date;
+          if (evtDate) {
+            const d = new Date(evtDate);
+            if (!isNaN(d.getTime()) && d < now) {
+              return false;
+            }
+          }
+
+          return status === 'active' || !status;
+        });
+
+        // 2. Legitimate past tickets: used tickets or concluded event passes (excludes cancelled/transferred)
+        const pastList = list.filter((t) => {
+          if (!t) return false;
+          const status = String(t.status || '').toLowerCase();
+          if (['transferred', 'cancelled', 'refunded', 'void'].includes(status)) return false;
+          if (t.payment_status === 'refunded' || t.payment_status === 'failed') return false;
+
+          const isUsed = Boolean(t.is_used || status === 'used');
+          const evtDate = t.end_date || t.start_date;
+          const isConcluded = evtDate ? new Date(evtDate) < now : false;
+
+          return isUsed || isConcluded;
+        });
+
         setActiveTickets(activeList);
         setPastTickets(pastList);
         setTicketCount(activeList.length);

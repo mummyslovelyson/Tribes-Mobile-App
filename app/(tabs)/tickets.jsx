@@ -112,9 +112,25 @@ export default function TicketsScreen() {
   };
 
   const filteredTickets = tickets.filter((t) => {
-    const isUsed = t.status === 'used' || t.is_used;
-    if (activeTab === 'active') return !isUsed;
-    return isUsed;
+    if (!t) return false;
+    const status = String(t.status || '').toLowerCase();
+    const isBadStatus =
+      ['transferred', 'cancelled', 'refunded', 'void'].includes(status) ||
+      t.payment_status === 'refunded' ||
+      t.payment_status === 'failed';
+
+    const now = new Date();
+    const evtDate = t.end_date || t.start_date;
+    const isConcluded = evtDate ? new Date(evtDate) < now : false;
+    const isUsed = Boolean(t.is_used || status === 'used');
+
+    if (activeTab === 'active') {
+      if (isBadStatus || isUsed || isConcluded || t.event_status === 'cancelled') return false;
+      return status === 'active' || !status;
+    } else {
+      if (isBadStatus) return false;
+      return isUsed || isConcluded;
+    }
   });
 
   // Not signed in state

@@ -164,11 +164,16 @@ export default function GoogleAuthButton({
       // ── 1. Native Mobile (Android APK / Standalone / iOS): Real Google OAuth via WebBrowser ──
       if (Platform.OS !== 'web') {
         try {
-          const clientId =
-            process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-            '493987932876-ovcdfbde7f01c8n79n4gcc0g2fppsmsv.apps.googleusercontent.com';
-          const backendCallback = 'https://trip-and-cliqs-backend.onrender.com/api/auth/callback';
+          const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+          const apiBaseUrl = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/api\/?$/, '');
+          const backendCallback = apiBaseUrl ? `${apiBaseUrl}/api/auth/callback` : '';
           const appRedirect = 'tribescliqs://auth-callback';
+
+          if (!clientId || !backendCallback) {
+            console.warn('[GoogleAuthButton] Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID or EXPO_PUBLIC_API_URL in environment');
+            setShowModal(true);
+            return;
+          }
 
           const googleAuthUrl =
             `https://accounts.google.com/o/oauth2/v2/auth?` +
