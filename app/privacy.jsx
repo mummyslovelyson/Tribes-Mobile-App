@@ -207,7 +207,7 @@ export default function PrivacyPolicyScreen() {
           <Text style={styles.sectionTitle}>Our Commitment to Your Privacy</Text>
           <Text style={styles.bodyText}>
             At TRIBESANDCLIQS LIMITED, as the data controller under Ghana’s Data Protection Act (Act 843) and EU GDPR, we are committed to maintaining the trust of every user. We never sell, rent, or trade your personal information for marketing purposes.
-          </p>
+          </Text>
 
           <View style={styles.promiseRow}>
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
