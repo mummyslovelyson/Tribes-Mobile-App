@@ -185,7 +185,7 @@ export default function PrivacyPolicyScreen() {
         {/* Hero Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroBadge}>
-            <Ionicons name="shield-checkmark" size={24} color="#D92626" />
+            <Ionicons name="shield-checkmark" size={24} color=COLORS.textSecondary />
           </View>
           <Text style={styles.heroTitle}>TRIBESANDCLIQS LIMITED</Text>
           <Text style={styles.heroSubtitle}>Official Privacy Statement</Text>
@@ -378,9 +378,9 @@ const styles = StyleSheet.create({
   },
   alertBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(178, 20, 20, 0.1)',
+    backgroundColor: 'rgba(239, 239, 241, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.35)',
+    borderColor: 'rgba(203, 213, 225, 0.35)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginTop: SPACING.lg,

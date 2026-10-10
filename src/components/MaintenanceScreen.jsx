@@ -142,12 +142,12 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    backgroundColor: 'rgba(239, 239, 241, 0.12)',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.35)',
+    borderColor: 'rgba(203, 213, 225, 0.35)',
     gap: 6,
   },
   statusDot: {

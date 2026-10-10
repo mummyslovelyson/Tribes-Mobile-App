@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   },
   providerPillActive: {
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    backgroundColor: 'rgba(239, 239, 241, 0.15)',
   },
   providerPillText: {
     fontSize: 12,

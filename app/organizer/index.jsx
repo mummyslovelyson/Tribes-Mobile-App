@@ -295,7 +295,7 @@ export default function OrganizerDashboardScreen() {
             style={styles.quickActionCard}
             onPress={() => router.push('/organizer/create-event')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(178, 20, 20, 0.15)' }]}>
+            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(239, 239, 241, 0.15)' }]}>
               <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
             </View>
             <Text style={styles.quickActionLabel}>Create Event</Text>
@@ -649,7 +649,7 @@ export default function OrganizerDashboardScreen() {
                           style={styles.declineBtn}
                           onPress={() => handleOpenDeclineModal(req)}
                         >
-                          <Ionicons name="close" size={14} color="#EF4444" />
+                          <Ionicons name="close" size={14} color=COLORS.textSecondary />
                           <Text style={styles.declineBtnText}>Decline</Text>
                         </TouchableOpacity>
 
@@ -684,7 +684,7 @@ export default function OrganizerDashboardScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Ionicons name="close-circle" size={18} color="#EF4444" />
+                <Ionicons name="close-circle" size={18} color=COLORS.textSecondary />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Decline Refund</Text>
@@ -721,7 +721,7 @@ export default function OrganizerDashboardScreen() {
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: '#EF4444' }, respondingRefund && { opacity: 0.6 }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: COLORS.textSecondary }, respondingRefund && { opacity: 0.6 }]}
                 onPress={handleConfirmDecline}
                 disabled={respondingRefund}
               >
@@ -1221,9 +1221,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(178, 20, 20, 0.1)',
+    backgroundColor: 'rgba(239, 239, 241, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.3)',
+    borderColor: 'rgba(203, 213, 225, 0.30)',
     paddingHorizontal: SPACING.md,
     paddingVertical: 7,
     borderRadius: RADIUS.md,

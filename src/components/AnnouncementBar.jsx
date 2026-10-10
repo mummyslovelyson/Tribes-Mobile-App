@@ -16,24 +16,24 @@ export default function AnnouncementBar({ announcement }) {
     switch (announcement.type) {
       case 'danger':
         return {
-          bg: 'rgba(178, 20, 20, 0.15)',
-          border: 'rgba(178, 20, 20, 0.4)',
+          bg: 'rgba(239, 239, 241, 0.15)',
+          border: 'rgba(203, 213, 225, 0.40)',
           text: COLORS.text,
           icon: 'alert-circle-outline',
           iconColor: COLORS.primary,
         };
       case 'warning':
         return {
-          bg: 'rgba(178, 20, 20, 0.12)',
-          border: 'rgba(178, 20, 20, 0.3)',
+          bg: 'rgba(239, 239, 241, 0.12)',
+          border: 'rgba(203, 213, 225, 0.30)',
           text: COLORS.text,
           icon: 'warning-outline',
           iconColor: COLORS.primary,
         };
       case 'success':
         return {
-          bg: 'rgba(178, 20, 20, 0.12)',
-          border: 'rgba(178, 20, 20, 0.3)',
+          bg: 'rgba(239, 239, 241, 0.12)',
+          border: 'rgba(203, 213, 225, 0.30)',
           text: COLORS.text,
           icon: 'checkmark-circle-outline',
           iconColor: COLORS.primary,

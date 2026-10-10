@@ -254,7 +254,7 @@ export default function RegisterScreen() {
         {/* Error Notification */}
         {errorMessage ? (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={18} color="#FF6B6B" />
+            <Ionicons name="alert-circle-outline" size={18} color=COLORS.textSecondary />
             <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   errorBannerText: {
-    color: '#FF6B6B',
+    color: COLORS.textSecondary,
     fontSize: 12,
     flex: 1,
     lineHeight: 17,

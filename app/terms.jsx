@@ -328,13 +328,13 @@ export default function TermsOfServiceScreen() {
             {section.prohibitedCategories && (
               <View style={styles.prohibitedCard}>
                 <View style={styles.prohibitedHeaderRow}>
-                  <Ionicons name="warning-outline" size={16} color="#EF4444" />
+                  <Ionicons name="warning-outline" size={16} color=COLORS.textSecondary />
                   <Text style={styles.prohibitedTitle}>EXPRESSLY PROHIBITED ACTIVITIES & SERVICES</Text>
                 </View>
                 <View style={{ gap: 4, marginTop: 4 }}>
                   {section.prohibitedCategories.map((cat, cIdx) => (
                     <View key={cIdx} style={styles.bulletRow}>
-                      <Text style={[styles.bulletDot, { color: '#EF4444' }]}>✕</Text>
+                      <Text style={[styles.bulletDot, { color: COLORS.textSecondary }]}>✕</Text>
                       <Text style={styles.bulletText}>{cat}</Text>
                     </View>
                   ))}
@@ -440,9 +440,9 @@ const styles = StyleSheet.create({
   },
   alertBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(178, 20, 20, 0.1)',
+    backgroundColor: 'rgba(239, 239, 241, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.35)',
+    borderColor: 'rgba(203, 213, 225, 0.35)',
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginTop: SPACING.lg,
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   prohibitedTitle: {
-    color: '#EF4444',
+    color: COLORS.textSecondary,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,

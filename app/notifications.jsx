@@ -93,14 +93,14 @@ export default function NotificationsScreen() {
         return {
           icon: 'ticket-outline',
           color: COLORS.primary,
-          bg: 'rgba(178, 20, 20, 0.12)',
+          bg: 'rgba(239, 239, 241, 0.12)',
         };
       case 'order':
       case 'payment':
         return {
           icon: 'receipt-outline',
           color: COLORS.primary,
-          bg: 'rgba(178, 20, 20, 0.12)',
+          bg: 'rgba(239, 239, 241, 0.12)',
         };
       case 'reminder':
       case 'event':
@@ -114,7 +114,7 @@ export default function NotificationsScreen() {
         return {
           icon: 'shield-checkmark-outline',
           color: COLORS.primary,
-          bg: 'rgba(178, 20, 20, 0.12)',
+          bg: 'rgba(239, 239, 241, 0.12)',
         };
       default:
         return {

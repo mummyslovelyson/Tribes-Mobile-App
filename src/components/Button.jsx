@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.borderSubtle,
   },
   disabled: {
     opacity: 0.45,
@@ -89,12 +89,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   textPrimary: {
-    color: COLORS.text,
+    color: COLORS.buttonText,
   },
   textSecondary: {
     color: COLORS.text,
   },
   textOutline: {
-    color: COLORS.primary,
+    color: COLORS.text,
   },
 });

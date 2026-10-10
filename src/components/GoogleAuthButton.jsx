@@ -297,7 +297,7 @@ export default function GoogleAuthButton({
             {/* In-Modal Error Banner */}
             {modalError ? (
               <View style={styles.modalErrorBanner}>
-                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Ionicons name="alert-circle" size={16} color=COLORS.textSecondary />
                 <Text style={styles.modalErrorText}>{modalError}</Text>
               </View>
             ) : null}
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   modalErrorText: {
-    color: '#EF4444',
+    color: COLORS.textSecondary,
     fontSize: 12,
     flex: 1,
     lineHeight: 16,

@@ -553,7 +553,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               <View style={styles.statsGrid}>
                 {/* Revenue Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.12)' }]}>
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(239, 239, 241, 0.12)' }]}>
                     <Ionicons name="cash-outline" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.statLabel}>Total Revenue</Text>
@@ -579,7 +579,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
 
                 {/* Users Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.12)' }]}>
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(239, 239, 241, 0.12)' }]}>
                     <Ionicons name="people-outline" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.statLabel}>Registered Users</Text>
@@ -591,7 +591,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
 
                 {/* Tickets Card */}
                 <View style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.12)' }]}>
+                  <View style={[styles.statIconWrap, { backgroundColor: 'rgba(239, 239, 241, 0.12)' }]}>
                     <Ionicons name="ticket-outline" size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.statLabel}>Tickets Issued</Text>
@@ -999,7 +999,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               {/* Maintenance Toggle Card */}
               <View style={styles.controlCard}>
                 <View style={styles.controlHeader}>
-                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.15)' }]}>
+                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(239, 239, 241, 0.15)' }]}>
                     <Ionicons name="construct-outline" size={22} color={COLORS.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -1033,7 +1033,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               {/* Announcement Toggle Card */}
               <View style={styles.controlCard}>
                 <View style={styles.controlHeader}>
-                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(178, 20, 20, 0.15)' }]}>
+                  <View style={[styles.controlIconWrap, { backgroundColor: 'rgba(239, 239, 241, 0.15)' }]}>
                     <Ionicons name="megaphone-outline" size={22} color={COLORS.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -1173,7 +1173,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
                       onPress={() => handleDeleteBanner(b)}
                       disabled={actionId === b.id}
                     >
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      <Ionicons name="trash-outline" size={16} color=COLORS.textSecondary />
                     </TouchableOpacity>
                   </View>
                 ))
@@ -1487,9 +1487,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   btnFeatured: {
-    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    backgroundColor: 'rgba(239, 239, 241, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.4)',
+    borderColor: 'rgba(203, 213, 225, 0.40)',
   },
   btnOutline: {
     backgroundColor: COLORS.surface,

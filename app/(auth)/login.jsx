@@ -93,7 +93,7 @@ export default function LoginScreen() {
         {/* Error Notification */}
         {errorMessage ? (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={18} color="#EF4444" />
+            <Ionicons name="alert-circle" size={18} color=COLORS.textSecondary />
             <Text style={styles.errorBannerText}>{errorMessage}</Text>
           </View>
         ) : null}
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   errorBannerText: {
-    color: '#EF4444',
+    color: COLORS.textSecondary,
     fontSize: 13,
     flex: 1,
     lineHeight: 18,

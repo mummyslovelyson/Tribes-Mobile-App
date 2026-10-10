@@ -138,9 +138,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
   },
   statusActive: {
-    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    backgroundColor: 'rgba(239, 239, 241, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.4)',
+    borderColor: 'rgba(203, 213, 225, 0.40)',
   },
   statusUsed: {
     backgroundColor: 'rgba(148, 149, 153, 0.15)',

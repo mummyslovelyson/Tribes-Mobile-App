@@ -69,9 +69,9 @@ export default function Logo({
             width: config.img,
             height: config.img,
             borderRadius: config.radius,
-            backgroundColor: '#2A1515',
+            backgroundColor: COLORS.surface,
             borderWidth: 1,
-            borderColor: COLORS.primary,
+            borderColor: COLORS.border,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   brandAmp: {
-    color: COLORS.primary,
+    color: COLORS.textSecondary,
     fontWeight: '900',
     marginHorizontal: 1,
   },

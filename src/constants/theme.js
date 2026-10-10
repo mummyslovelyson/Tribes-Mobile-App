@@ -1,53 +1,56 @@
 /**
  * Tribes & Cliqs Mobile Brand Design Tokens
- * Strictly adheres to project palette:
- * Background: #111417, Cards: #14181C, #171A1D, #1C232B
- * Borders: #2E363E, #242B32, Accent: #b21414, Text: #FFFFFF, #949599
- * Zero emojis across all screens and components.
+ * Strictly adheres to official logo palette:
+ * Background/Canvas: #1C232B, Surfaces: #161D22, Cards: #242B32, #2E363E
+ * Borders: #2E363E, #3A444E
+ * Logo Typography & Highlights: Crisp Off-White #EFEFF1, Pure White #FFFFFF
+ * Metallic Silver: #CBD5E1, Slate Gray: #949599
+ * Zero foreign colors (no red, green, blue, pink, or amber).
  */
 
 export const COLORS = {
-  // Canonical Project Palette (tailwind.config.js & index.css)
-  background: '#1C232B',       // tc-bg: Primary dark canvas
-  surface: '#161D22',          // tc-sidebar: Headers, navbars, input containers
-  card: '#242B32',             // tc-card: Cards, dialogs, step containers
+  // Canonical Logo Palette
+  background: '#1C232B',       // Primary dark slate canvas from logo background
+  surface: '#161D22',          // Headers, navbars, input containers
+  card: '#242B32',             // Elevated cards & containers
   cardHover: '#2A323B',
   cardElevated: '#2E363E',
   inputBg: '#161D22',          // Inset input background
   border: '#2E363E',           // Card & container borders
-  borderSubtle: '#494F55',     // tc-subtle: Defined dividers & subtle borders
+  borderSubtle: '#3A444E',     // Defined dividers & subtle borders
   borderLight: 'rgba(239, 239, 241, 0.12)',
 
-  // Typography
-  text: '#EFEFF1',             // tc-text: Primary readable off-white
-  textSecondary: '#CBD5E1',    // tc-silver: Secondary text
-  textMuted: '#949599',        // tc-muted: Subtle / helper text
-  placeholder: '#494F55',      // tc-subtle: Input placeholders
+  // Typography (Exact Logo Spectrum)
+  text: '#EFEFF1',             // Primary readable off-white ("TRIBES", "CLIQS")
+  textSecondary: '#CBD5E1',    // Metallic silver (emblem feathers & ampersand)
+  textMuted: '#949599',        // Slate gray ("LIVING THE MOMENT" subtitle & inner ring)
+  placeholder: '#555E68',      // Input placeholders
 
-  // Action Buttons & Signature Accent
-  primary: '#b21414',          // Signature brand red accent
-  primaryHover: '#8F1010',
-  primaryMuted: 'rgba(178, 20, 20, 0.15)',
-  buttonText: '#FFFFFF',
+  // Action Buttons & Signature Highlight
+  primary: '#EFEFF1',          // Primary brand white highlight
+  primaryHover: '#FFFFFF',
+  primaryMuted: 'rgba(239, 239, 241, 0.12)',
+  buttonText: '#1C232B',       // Dark high-contrast text on primary buttons
 
-  // High-Contrast Web Style Button Variant
-  buttonLight: '#EFEFF1',
-  buttonLightText: '#1C232B',
+  // Secondary Button Variant
+  buttonLight: '#242B32',
+  buttonLightText: '#EFEFF1',
 
   // Brand Accents
-  accent: '#b21414',
-  accentHover: '#8F1010',
-  accentMuted: 'rgba(178, 20, 20, 0.15)',
-  accentBorder: 'rgba(178, 20, 20, 0.35)',
+  accent: '#CBD5E1',           // Metallic silver accent
+  accentHover: '#EFEFF1',
+  accentMuted: 'rgba(203, 213, 225, 0.12)',
+  accentBorder: 'rgba(203, 213, 225, 0.30)',
 
-  brandRed: '#b21414',
-  silver: '#CBD5E1',           // tc-silver
-  white: '#FFFFFF',
+  brandRed: '#EFEFF1',         // Backward-compat alias mapping to brand white
+  silver: '#CBD5E1',           // Metallic silver
+  white: '#FFFFFF',            // Pure white
+  slate: '#949599',            // Slate gray
 
-  // Status Colors (Strictly Logo Palette: Brand Red, Silver, Off-White, Charcoal)
-  success: '#FFFFFF',
+  // Status Colors (Strictly Logo Palette)
+  success: '#EFEFF1',
   warning: '#CBD5E1',
-  error: '#b21414',
+  error: '#949599',
   info: '#CBD5E1',
 };
 

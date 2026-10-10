@@ -296,7 +296,7 @@ export default function OrdersScreen() {
                 activeOpacity={0.8}
                 onPress={() => handleOpenCancelModal(item)}
               >
-                <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
+                <Ionicons name="close-circle-outline" size={14} color=COLORS.textSecondary />
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             )}
@@ -502,7 +502,7 @@ export default function OrdersScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <View style={[styles.modalHeaderIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Ionicons name="close-circle" size={18} color="#EF4444" />
+                <Ionicons name="close-circle" size={18} color=COLORS.textSecondary />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Cancel Booking</Text>
@@ -542,7 +542,7 @@ export default function OrdersScreen() {
                 <Text style={styles.modalCancelBtnText}>Keep Booking</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: '#EF4444' }, submittingCancel && { opacity: 0.6 }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: COLORS.textSecondary }, submittingCancel && { opacity: 0.6 }]}
                 onPress={handleSubmitCancel}
                 disabled={submittingCancel}
               >
@@ -632,9 +632,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusPending: {
-    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    backgroundColor: 'rgba(239, 239, 241, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.3)',
+    borderColor: 'rgba(203, 213, 225, 0.30)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
@@ -648,9 +648,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(178, 20, 20, 0.15)',
+    backgroundColor: 'rgba(239, 239, 241, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.4)',
+    borderColor: 'rgba(203, 213, 225, 0.40)',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
@@ -678,9 +678,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   statusCancelled: {
-    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    backgroundColor: 'rgba(239, 239, 241, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.3)',
+    borderColor: 'rgba(203, 213, 225, 0.30)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.sm,
@@ -793,9 +793,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(178, 20, 20, 0.12)',
+    backgroundColor: 'rgba(239, 239, 241, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(178, 20, 20, 0.35)',
+    borderColor: 'rgba(203, 213, 225, 0.35)',
     paddingHorizontal: SPACING.sm + 2,
     paddingVertical: 6,
     borderRadius: RADIUS.md,
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   cancelBtnText: {
-    color: '#EF4444',
+    color: COLORS.textSecondary,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
   },
   groundCardSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(178, 20, 20, 0.1)',
+    backgroundColor: 'rgba(239, 239, 241, 0.10)',
   },
   groundHeader: {
     flexDirection: 'row',
