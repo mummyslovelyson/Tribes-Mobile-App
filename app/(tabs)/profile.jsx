@@ -10,7 +10,6 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   RefreshControl,
   Image,
 } from 'react-native';
@@ -36,7 +35,6 @@ export default function ProfileScreen() {
   // Dashboard Metrics State
   const [ticketCount, setTicketCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
-  const [loadingTickets, setLoadingTickets] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Edit Profile Form State
@@ -58,10 +56,7 @@ export default function ProfileScreen() {
 
   // Data fetching helper
   const loadDashboardData = useCallback(async () => {
-    if (!isAuthenticated) {
-      setLoadingTickets(false);
-      return;
-    }
+    if (!isAuthenticated) return;
     try {
       const [ticketsData, ordersData] = await Promise.allSettled([
         getMyTicketsApi(),
@@ -114,8 +109,6 @@ export default function ProfileScreen() {
       }
     } catch (err) {
       console.warn('[ProfileScreen] Dashboard load warning:', err.message);
-    } finally {
-      setLoadingTickets(false);
     }
   }, [isAuthenticated]);
 
@@ -868,81 +861,6 @@ export default function ProfileScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
-
-      {/* Attendee QR Code Pass Modal */}
-      <Modal
-        visible={Boolean(selectedTicket)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedTicket(null)}
-      >
-        <View style={styles.qrModalBackdrop}>
-          <View style={styles.qrModalCard}>
-            <View style={styles.qrModalHeader}>
-              <View style={styles.qrModalBadge}>
-                <Ionicons name="shield-checkmark" size={13} color={COLORS.primary} />
-                <Text style={styles.qrModalBadgeText}>OFFICIAL GATE PASS</Text>
-              </View>
-              <TouchableOpacity onPress={() => setSelectedTicket(null)} style={styles.qrCloseBtn}>
-                <Ionicons name="close" size={20} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.qrModalEventTitle} numberOfLines={2}>
-              {selectedTicket?.event_title || selectedTicket?.title || 'Event Pass'}
-            </Text>
-            <Text style={styles.qrModalTier}>
-              {selectedTicket?.ticket_type_name || selectedTicket?.tier_name || 'Standard Admission'}
-            </Text>
-
-            {/* QR Graphic with High Contrast Container */}
-            <View style={styles.qrGraphicContainer}>
-              <View style={styles.qrGraphicBox}>
-                <Ionicons name="qr-code" size={165} color="#0F1419" />
-              </View>
-              <Text style={styles.qrModalCode}>
-                {selectedTicket?.ticket_code || `#TC-${selectedTicket?.id}`}
-              </Text>
-            </View>
-
-            <View style={styles.qrDetailsRow}>
-              <View style={styles.qrDetailItem}>
-                <Text style={styles.qrDetailLabel}>VENUE</Text>
-                <Text style={styles.qrDetailValue} numberOfLines={1}>
-                  {selectedTicket?.venue || selectedTicket?.city || 'Accra, Ghana'}
-                </Text>
-              </View>
-              <View style={styles.qrDetailItem}>
-                <Text style={styles.qrDetailLabel}>STATUS</Text>
-                <Text
-                  style={[
-                    styles.qrDetailValue,
-                    {
-                      color:
-                        selectedTicket?.status === 'used' || selectedTicket?.is_used
-                          ? COLORS.textMuted
-                          : COLORS.primary,
-                    },
-                  ]}
-                >
-                  {selectedTicket?.status === 'used' || selectedTicket?.is_used ? 'USED' : 'VALID'}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.qrModalInstructions}>
-              Present this QR code at the event gate to scan and gain entry.
-            </Text>
-
-            <Button
-              title="Close Pass"
-              variant="secondary"
-              onPress={() => setSelectedTicket(null)}
-              style={styles.qrModalDoneBtn}
-            />
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1664,129 +1582,5 @@ const styles = StyleSheet.create({
   showPassText: {
     color: COLORS.textMuted,
     fontSize: 13,
-  },
-
-  // QR Modal Styles
-  qrModalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.88)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.lg,
-  },
-  qrModalCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: SPACING.xl,
-    alignItems: 'center',
-  },
-  qrModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: SPACING.md,
-  },
-  qrModalBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(239, 239, 241, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(203, 213, 225, 0.35)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.sm,
-  },
-  qrModalBadgeText: {
-    color: COLORS.primary,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  qrCloseBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrModalEventTitle: {
-    color: COLORS.text,
-    fontSize: 17,
-    fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  qrModalTier: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginTop: 2,
-    marginBottom: SPACING.md,
-  },
-  qrGraphicContainer: {
-    backgroundColor: '#FFFFFF',
-    padding: SPACING.lg,
-    borderRadius: RADIUS.xl,
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    width: '100%',
-  },
-  qrGraphicBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrModalCode: {
-    color: '#0F1419',
-    fontSize: 14,
-    fontWeight: '800',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: SPACING.sm,
-    letterSpacing: 1,
-  },
-  qrDetailsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  qrDetailItem: {
-    flex: 1,
-  },
-  qrDetailLabel: {
-    color: COLORS.textMuted,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  qrDetailValue: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  qrModalInstructions: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: SPACING.lg,
-  },
-  qrModalDoneBtn: {
-    width: '100%',
   },
 });
