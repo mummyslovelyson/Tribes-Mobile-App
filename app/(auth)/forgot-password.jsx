@@ -359,6 +359,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 14,
     height: '100%',
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   actionBtn: {
     marginTop: SPACING.md,

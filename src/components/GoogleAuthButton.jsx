@@ -159,55 +159,102 @@ export default function GoogleAuthButton({
 
   const handleGoogleSignIn = async () => {
     try {
-      // Check if running on mobile device (Native iOS/Android, Expo Go, or Mobile Web browser)
-      const isMobileDevice =
-        Platform.OS !== 'web' ||
-        (typeof navigator !== 'undefined' &&
-          /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+      setLoading(true);
 
-      // ── 1. Mobile Environments: Always use the in-app Google Account Selector ──
-      // This bypasses Firebase's broken signInWithRedirect, storage partitioning,
-      // and the "missing initial state" error on mobile Chrome/Safari.
-      if (isMobileDevice) {
-        setShowModal(true);
-        return;
+      // ── 1. Native Mobile (Android APK / Standalone / iOS): Real Google OAuth via WebBrowser ──
+      if (Platform.OS !== 'web') {
+        try {
+          const clientId =
+            process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+            '493987932876-ovcdfbde7f01c8n79n4gcc0g2fppsmsv.apps.googleusercontent.com';
+          const backendCallback = 'https://trip-and-cliqs-backend.onrender.com/api/auth/callback';
+          const appRedirect = 'tribescliqs://auth-callback';
+
+          const googleAuthUrl =
+            `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `client_id=${encodeURIComponent(clientId)}` +
+            `&redirect_uri=${encodeURIComponent(backendCallback)}` +
+            `&response_type=token%20id_token` +
+            `&scope=${encodeURIComponent('openid profile email')}` +
+            `&nonce=${Date.now()}` +
+            `&prompt=select_account` +
+            `&state=${encodeURIComponent(appRedirect)}`;
+
+          const result = await WebBrowser.openAuthSessionAsync(googleAuthUrl, appRedirect);
+
+          if (result?.type === 'success' && result?.url) {
+            const returnUrl = result.url;
+            let paramString = '';
+            if (returnUrl.includes('#') && returnUrl.includes('?')) {
+              const [beforeHash, hashPart] = returnUrl.split('#');
+              const queryPart = beforeHash.split('?')[1] || '';
+              paramString = `${queryPart}&${hashPart}`;
+            } else if (returnUrl.includes('#')) {
+              paramString = returnUrl.split('#')[1] || '';
+            } else if (returnUrl.includes('?')) {
+              paramString = returnUrl.split('?')[1] || '';
+            }
+
+            const urlParams = new URLSearchParams(paramString);
+            const idToken = urlParams.get('id_token');
+            const accessToken = urlParams.get('access_token');
+            let email = urlParams.get('email');
+            let name = urlParams.get('name');
+            let picture = urlParams.get('picture');
+
+            // If access token is present but email is not in URL, query Google userinfo directly
+            if (accessToken && !email) {
+              try {
+                const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                });
+                if (profileRes.ok) {
+                  const profileData = await profileRes.json();
+                  email = profileData.email;
+                  name = profileData.name || profileData.given_name;
+                  picture = profileData.picture;
+                }
+              } catch (profileErr) {
+                console.warn('[GoogleAuthButton] Google profile fetch fallback:', profileErr?.message);
+              }
+            }
+
+            if (idToken || accessToken || email) {
+              await submitGoogleAuth({
+                idToken: idToken || undefined,
+                accessToken: accessToken || undefined,
+                email: email || undefined,
+                name: name || undefined,
+                picture: picture || undefined,
+              });
+              return;
+            }
+          }
+
+          if (result?.type === 'cancel' || result?.type === 'dismiss') {
+            setLoading(false);
+            return;
+          }
+        } catch (nativeOAuthErr) {
+          console.warn('[GoogleAuthButton] Native OAuth error:', nativeOAuthErr?.message);
+        }
       }
 
       // ── 2. Desktop Web Platform: Firebase Web Popup with In-App Fallback ──
       if (Platform.OS === 'web' && isFirebaseConfigured) {
         const isInsideIframe = typeof window !== 'undefined' && window.self !== window.top;
 
-        if (isInsideIframe) {
-          setShowModal(true);
-          return;
-        }
-
-        let popupPromise;
-        try {
-          popupPromise = signInWithGoogleWebPopup();
-        } catch (syncErr) {
-          console.warn('[GoogleAuth] Popup synchronous error:', syncErr?.message);
-        }
-
-        setLoading(true);
-
-        try {
-          const firebaseResult = await popupPromise;
-          if (firebaseResult?.idToken) {
-            await submitGoogleAuth(firebaseResult);
-            return;
+        if (!isInsideIframe) {
+          try {
+            const firebaseResult = await signInWithGoogleWebPopup();
+            if (firebaseResult?.idToken) {
+              await submitGoogleAuth(firebaseResult);
+              return;
+            }
+          } catch (popupErr) {
+            console.warn('[GoogleAuth] Popup error:', popupErr?.code, popupErr?.message);
           }
-        } catch (popupErr) {
-          console.warn('[GoogleAuth] Popup error:', popupErr?.code, popupErr?.message);
-          setLoading(false);
-          // Whenever popup fails, is blocked, or encounters storage partitioning,
-          // open the in-app Google Account dialog directly.
-          setShowModal(true);
-          return;
         }
-
-        setLoading(false);
-        return;
       }
 
       // Default fallback: show in-app account dialog
@@ -241,7 +288,7 @@ export default function GoogleAuthButton({
           <ActivityIndicator size="small" color={COLORS.text} style={styles.icon} />
         ) : (
           <View style={styles.googleIconCircle}>
-            <Ionicons name="logo-google" size={16} color="#EA4335" />
+            <Ionicons name="logo-google" size={16} color={COLORS.text} />
           </View>
         )}
         <Text style={styles.buttonText}>
@@ -276,7 +323,7 @@ export default function GoogleAuthButton({
             <View style={styles.modalHeader}>
               <View style={styles.headerTitleRow}>
                 <View style={styles.googleModalIcon}>
-                  <Ionicons name="logo-google" size={20} color="#EA4335" />
+                  <Ionicons name="logo-google" size={20} color={COLORS.text} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.modalTitle}>Sign in with Google</Text>
@@ -337,7 +384,7 @@ export default function GoogleAuthButton({
                   disabled={modalLoading}
                 >
                   <View style={styles.addAccountIcon}>
-                    <Ionicons name="person-add-outline" size={16} color={COLORS.accent} />
+                    <Ionicons name="person-add-outline" size={16} color={COLORS.text} />
                   </View>
                   <Text style={styles.addAccountText}>Use another Google account</Text>
                 </TouchableOpacity>
@@ -357,6 +404,7 @@ export default function GoogleAuthButton({
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!modalLoading}
+                    underlineColorAndroid="transparent"
                   />
 
                   <Text style={[styles.inputLabel, { marginTop: SPACING.sm }]}>
@@ -369,6 +417,7 @@ export default function GoogleAuthButton({
                     value={customName}
                     onChangeText={setCustomName}
                     editable={!modalLoading}
+                    underlineColorAndroid="transparent"
                   />
 
                   <View style={styles.actionRow}>
@@ -387,7 +436,7 @@ export default function GoogleAuthButton({
                       disabled={modalLoading}
                     >
                       {modalLoading ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <ActivityIndicator size="small" color={COLORS.buttonText} />
                       ) : (
                         <Text style={styles.continueBtnText}>Sign In</Text>
                       )}
@@ -399,7 +448,7 @@ export default function GoogleAuthButton({
 
             {/* Secure Badge Footer */}
             <View style={styles.modalFooter}>
-              <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.primary} />
+              <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.textSecondary} />
               <Text style={styles.modalFooterText}>
                 Google OAuth Verified &amp; Encrypted Session
               </Text>
@@ -569,7 +618,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(217, 38, 38, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -603,6 +652,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     color: COLORS.text,
     fontSize: 13,
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   actionRow: {
     flexDirection: 'row',
@@ -625,10 +676,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
   },
   continueBtnText: {
-    color: '#FFFFFF',
+    color: COLORS.buttonText,
     fontSize: 12,
     fontWeight: '700',
   },

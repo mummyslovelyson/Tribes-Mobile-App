@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.tribesandcliqs.app",
       "adaptiveIcon": {
         "backgroundColor": "#1C232B",
         "foregroundImage": "./assets/images/logo.png"

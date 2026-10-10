@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -12,6 +12,44 @@ import MaintenanceScreen from '../src/components/MaintenanceScreen';
 
 // Prevent native splash screen from hiding prematurely while bundling
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Inject universal reset for web/webview inputs to strip browser focus rings & yellow autofill
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const styleId = 'tc-global-input-reset';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.innerHTML = `
+      * {
+        -webkit-tap-highlight-color: transparent !important;
+      }
+      input, textarea, select {
+        outline: none !important;
+        outline-style: none !important;
+        outline-width: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background-color: transparent !important;
+      }
+      input:focus, textarea:focus, select:focus {
+        outline: none !important;
+        outline-style: none !important;
+        outline-width: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active {
+        -webkit-text-fill-color: #EFEFF1 !important;
+        -webkit-box-shadow: 0 0 0px 1000px #161D22 inset !important;
+        transition: background-color 5000s ease-in-out 0s !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
 export const unstable_settings = {
   anchor: '(tabs)',

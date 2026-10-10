@@ -26,6 +26,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [focusedField, setFocusedField] = useState(null);
 
   const handleLogin = async () => {
     setErrorMessage('');
@@ -103,19 +104,32 @@ export default function LoginScreen() {
           {/* Email */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-            <View style={styles.inputBox}>
-              <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} />
+            <View
+              style={[
+                styles.inputBox,
+                focusedField === 'email' && styles.inputBoxFocused,
+              ]}
+            >
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color={focusedField === 'email' ? COLORS.text : COLORS.textMuted}
+              />
               <TextInput
                 style={styles.textInput}
                 placeholder="name@example.com"
                 placeholderTextColor={COLORS.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 value={email}
                 onChangeText={(val) => {
                   setEmail(val);
                   setErrorMessage('');
                 }}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+                underlineColorAndroid="transparent"
                 cursorColor={COLORS.primary}
               />
             </View>
@@ -132,8 +146,17 @@ export default function LoginScreen() {
                 <Text style={styles.forgotPassText}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.inputBox}>
-              <Ionicons name="lock-closed-outline" size={18} color={COLORS.textMuted} />
+            <View
+              style={[
+                styles.inputBox,
+                focusedField === 'password' && styles.inputBoxFocused,
+              ]}
+            >
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={focusedField === 'password' ? COLORS.text : COLORS.textMuted}
+              />
               <TextInput
                 style={styles.textInput}
                 placeholder="Enter your password"
@@ -144,6 +167,9 @@ export default function LoginScreen() {
                   setPassword(val);
                   setErrorMessage('');
                 }}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                underlineColorAndroid="transparent"
                 cursorColor={COLORS.primary}
               />
               <TouchableOpacity
@@ -281,11 +307,20 @@ const styles = StyleSheet.create({
     minHeight: 46,
     gap: SPACING.sm,
   },
+  inputBoxFocused: {
+    borderColor: 'rgba(239, 239, 241, 0.45)',
+  },
   textInput: {
     flex: 1,
     color: COLORS.text,
     fontSize: 13,
     fontWeight: '500',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   submitBtn: {
     backgroundColor: COLORS.primary,

@@ -343,6 +343,7 @@ export default function OrganizerWalletScreen() {
                 keyboardType="numeric"
                 placeholder={`Max ${balance.available.toFixed(2)}`}
                 placeholderTextColor={COLORS.placeholder}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -357,6 +358,7 @@ export default function OrganizerWalletScreen() {
                 keyboardType="numeric"
                 placeholder="0244000000"
                 placeholderTextColor={COLORS.placeholder}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -368,6 +370,7 @@ export default function OrganizerWalletScreen() {
                 onChangeText={setAccountName}
                 placeholder="e.g. Kwame Mensah"
                 placeholderTextColor={COLORS.placeholder}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -669,6 +672,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: COLORS.text,
     fontSize: 14,
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   submitModalBtn: {
     backgroundColor: COLORS.primary,

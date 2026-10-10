@@ -203,6 +203,7 @@ export default function VerifyOtpScreen() {
               onKeyPress={(e) => handleKeyPress(e, idx)}
               selectTextOnFocus
               cursorColor={COLORS.primary}
+              underlineColorAndroid="transparent"
             />
           ))}
         </View>
@@ -345,6 +346,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     textAlign: 'center',
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   otpBoxFilled: {
     borderColor: COLORS.primary,

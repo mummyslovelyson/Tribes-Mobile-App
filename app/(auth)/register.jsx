@@ -774,6 +774,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 13,
     fontWeight: '500',
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   bioInputBox: {
     minHeight: 70,
@@ -782,6 +787,8 @@ const styles = StyleSheet.create({
   },
   bioTextInput: {
     textAlignVertical: 'top',
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   eyeBtn: {
     padding: 4,

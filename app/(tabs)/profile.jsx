@@ -779,6 +779,7 @@ export default function ProfileScreen() {
                 placeholder="Your full name"
                 placeholderTextColor={COLORS.placeholder}
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -792,6 +793,7 @@ export default function ProfileScreen() {
                 placeholderTextColor={COLORS.placeholder}
                 keyboardType="phone-pad"
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -804,6 +806,7 @@ export default function ProfileScreen() {
                 placeholder="e.g. Accra, Ghana"
                 placeholderTextColor={COLORS.placeholder}
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -817,6 +820,7 @@ export default function ProfileScreen() {
                   placeholder="Official Organization Brand"
                   placeholderTextColor={COLORS.placeholder}
                   cursorColor={COLORS.primary}
+                  underlineColorAndroid="transparent"
                 />
               </View>
             )}
@@ -832,6 +836,7 @@ export default function ProfileScreen() {
                 multiline
                 numberOfLines={3}
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -902,6 +907,7 @@ export default function ProfileScreen() {
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!showPassword}
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -915,6 +921,7 @@ export default function ProfileScreen() {
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!showPassword}
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -928,6 +935,7 @@ export default function ProfileScreen() {
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry={!showPassword}
                 cursorColor={COLORS.primary}
+                underlineColorAndroid="transparent"
               />
             </View>
 
@@ -1702,11 +1710,15 @@ const styles = StyleSheet.create({
     height: 48,
     color: COLORS.text,
     fontSize: 14,
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   textArea: {
     height: 80,
     paddingTop: SPACING.sm + 2,
     textAlignVertical: 'top',
+    outlineStyle: 'none',
+    outlineWidth: 0,
   },
   msgBanner: {
     flexDirection: 'row',
