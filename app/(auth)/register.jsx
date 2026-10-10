@@ -569,7 +569,17 @@ export default function RegisterScreen() {
                 {agreedToTerms && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
               </View>
               <Text style={styles.termsText}>
-                I agree to the <Text style={styles.termsHighlight}>Terms of Service</Text> and{' '}
+                I agree to the{' '}
+                <Text
+                  style={styles.termsHighlight}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    router.push('/terms');
+                  }}
+                >
+                  Terms of Service
+                </Text>{' '}
+                and{' '}
                 <Text
                   style={styles.termsHighlight}
                   onPress={(e) => {

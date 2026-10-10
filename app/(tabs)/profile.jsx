@@ -272,6 +272,12 @@ export default function ProfileScreen() {
       onPress: () => router.push('/(tabs)/chat'),
     },
     {
+      id: 'terms_of_service',
+      title: 'Terms of Service',
+      icon: 'document-text-outline',
+      onPress: () => router.push('/terms'),
+    },
+    {
       id: 'privacy_policy',
       title: 'Privacy Policy',
       icon: 'shield-checkmark-outline',
