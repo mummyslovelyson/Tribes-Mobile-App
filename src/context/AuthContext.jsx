@@ -13,6 +13,7 @@ import {
   getProfileApi,
   updateProfileApi,
 } from '../api/auth';
+import { onUnauthorized } from '../api/client';
 
 const AuthContext = createContext({
   user: null,
@@ -86,6 +87,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  // Listen for unauthorized 401 events from the API client when refresh fails
+  useEffect(() => {
+    const unsubscribe = onUnauthorized(() => {
+      clearAuth();
+    });
+    return unsubscribe;
+  }, [clearAuth]);
+
   // Restore session from AsyncStorage on app boot
   useEffect(() => {
     const restoreSession = async () => {
@@ -126,6 +135,10 @@ export const AuthProvider = ({ children }) => {
             }
           } catch (profileErr) {
             console.warn('[AuthProvider] Profile fetch check on boot:', profileErr?.message);
+            if (profileErr?.response?.status === 401) {
+              // Token was rejected; clear state so app does not get stuck in ghost session
+              clearAuth();
+            }
           }
         }
       } catch (err) {
@@ -136,7 +149,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     restoreSession();
-  }, []);
+  }, [clearAuth]);
 
   const login = async (email, password) => {
     const data = await loginApi(email, password);

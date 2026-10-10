@@ -99,6 +99,16 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let unauthorizedHandlers = [];
+export const onUnauthorized = (handler) => {
+  if (typeof handler === 'function') {
+    unauthorizedHandlers.push(handler);
+  }
+  return () => {
+    unauthorizedHandlers = unauthorizedHandlers.filter((h) => h !== handler);
+  };
+};
+
 // Interceptor to handle unauthorized 401s with automatic token refresh
 client.interceptors.response.use(
   (response) => response,
@@ -144,6 +154,9 @@ client.interceptors.response.use(
               '@refresh_token',
               '@auth_user',
             ]);
+            unauthorizedHandlers.forEach((handler) => {
+              try { handler(); } catch {}
+            });
           } catch (clearErr) {
             console.warn('[API Client] Error clearing tokens on 401:', clearErr);
           }
