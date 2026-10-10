@@ -69,7 +69,7 @@ export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
         <View style={styles.detailCol}>
           <Text style={styles.detailLabel}>PRICE</Text>
           <Text style={styles.detailValue}>
-            {ticket.price ? `GHS ${Number(ticket.price).toFixed(2)}` : 'GHS 0.00'}
+            {`GHS ${Number(ticket.price ?? ticket.unit_price ?? ticket.ticket_price ?? 0).toFixed(2)}`}
           </Text>
         </View>
       </View>

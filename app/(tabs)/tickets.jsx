@@ -120,8 +120,22 @@ export default function TicketsScreen() {
       t.payment_status === 'failed';
 
     const now = new Date();
-    const evtDate = t.end_date || t.start_date;
-    const isConcluded = evtDate ? new Date(evtDate) < now : false;
+    const isConcluded = (() => {
+      const dateStr = t.end_date || t.start_date;
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const timeStr = t.end_time || t.start_time;
+      if (timeStr && typeof timeStr === 'string') {
+        const parts = timeStr.split(':');
+        if (parts.length >= 2) {
+          d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+          return d < now;
+        }
+      }
+      d.setHours(23, 59, 59, 999);
+      return d < now;
+    })();
     const isUsed = Boolean(t.is_used || status === 'used');
 
     if (activeTab === 'active') {

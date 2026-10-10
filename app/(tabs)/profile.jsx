@@ -20,7 +20,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Button from '../../src/components/Button';
 import Header from '../../src/components/Header';
 import Logo from '../../src/components/Logo';
-import TicketCard from '../../src/components/TicketCard';
 import { getMyTicketsApi } from '../../src/api/tickets';
 import { getUserOrdersApi } from '../../src/api/orders';
 import { useAuth } from '../../src/context/AuthContext';
@@ -34,12 +33,7 @@ export default function ProfileScreen() {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  // Dashboard & Tickets State
-  const [tickets, setTickets] = useState([]);
-  const [activeTickets, setActiveTickets] = useState([]);
-  const [pastTickets, setPastTickets] = useState([]);
-  const [ticketTab, setTicketTab] = useState('active'); // 'active' | 'past'
-  const [selectedTicket, setSelectedTicket] = useState(null);
+  // Dashboard Metrics State
   const [ticketCount, setTicketCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -78,11 +72,10 @@ export default function ProfileScreen() {
         const list = Array.isArray(ticketsData.value)
           ? ticketsData.value
           : ticketsData.value?.tickets || [];
-        setTickets(list);
 
         const now = new Date();
 
-        // 1. Strictly valid, upcoming active passes
+        // Strictly valid, upcoming active passes
         const activeList = list.filter((t) => {
           if (!t) return false;
           const status = String(t.status || '').toLowerCase();
@@ -91,33 +84,27 @@ export default function ProfileScreen() {
           if (t.event_status === 'cancelled') return false;
           if (t.is_used || status === 'used') return false;
 
-          const evtDate = t.end_date || t.start_date;
-          if (evtDate) {
-            const d = new Date(evtDate);
-            if (!isNaN(d.getTime()) && d < now) {
-              return false;
+          const dateStr = t.end_date || t.start_date;
+          if (dateStr) {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+              const timeStr = t.end_time || t.start_time;
+              if (timeStr && typeof timeStr === 'string') {
+                const parts = timeStr.split(':');
+                if (parts.length >= 2) {
+                  d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+                  if (d < now) return false;
+                }
+              } else {
+                d.setHours(23, 59, 59, 999);
+                if (d < now) return false;
+              }
             }
           }
 
           return status === 'active' || !status;
         });
 
-        // 2. Legitimate past tickets: used tickets or concluded event passes (excludes cancelled/transferred)
-        const pastList = list.filter((t) => {
-          if (!t) return false;
-          const status = String(t.status || '').toLowerCase();
-          if (['transferred', 'cancelled', 'refunded', 'void'].includes(status)) return false;
-          if (t.payment_status === 'refunded' || t.payment_status === 'failed') return false;
-
-          const isUsed = Boolean(t.is_used || status === 'used');
-          const evtDate = t.end_date || t.start_date;
-          const isConcluded = evtDate ? new Date(evtDate) < now : false;
-
-          return isUsed || isConcluded;
-        });
-
-        setActiveTickets(activeList);
-        setPastTickets(pastList);
         setTicketCount(activeList.length);
       }
 
@@ -153,8 +140,6 @@ export default function ProfileScreen() {
       setRefreshing(false);
     }
   };
-
-  const displayedTickets = ticketTab === 'active' ? activeTickets : pastTickets;
 
   const openEditProfile = () => {
     setEditName(user?.name || '');
@@ -553,121 +538,6 @@ export default function ProfileScreen() {
                 <Text style={styles.metricLabel}>Wishlist</Text>
                 <Text style={styles.metricSub}>Explore &rarr;</Text>
               </TouchableOpacity>
-            </View>
-
-            {/* My Passes & Tickets Section */}
-            <View style={styles.ticketsSection}>
-              <View style={styles.ticketsSectionHeader}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.ticketSectionTitleRow}>
-                    <Text style={styles.ticketsSectionTitle}>MY PASSES &amp; TICKETS</Text>
-                    {activeTickets.length > 0 && (
-                      <View style={styles.activePassBadge}>
-                        <Ionicons name="shield-checkmark" size={10} color={COLORS.primary} />
-                        <Text style={styles.activePassBadgeText}>{activeTickets.length} ACTIVE</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.ticketsSectionSubtitle}>
-                    {activeTickets.length > 0
-                      ? 'Digital entry passes with live check-in QR codes'
-                      : 'Your purchased event passes and ticket history'}
-                  </Text>
-                </View>
-
-                {tickets.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => router.push('/(tabs)/tickets')}
-                    activeOpacity={0.7}
-                    style={styles.fullWalletLink}
-                  >
-                    <Text style={styles.fullWalletLinkText}>Wallet</Text>
-                    <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Segment Toggle (Active vs Past) */}
-              {tickets.length > 0 && (
-                <View style={styles.ticketSegmentRow}>
-                  <TouchableOpacity
-                    style={[styles.ticketSegmentBtn, ticketTab === 'active' && styles.ticketSegmentBtnActive]}
-                    onPress={() => setTicketTab('active')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name="ticket"
-                      size={14}
-                      color={ticketTab === 'active' ? '#FFFFFF' : COLORS.textMuted}
-                    />
-                    <Text
-                      style={[styles.ticketSegmentText, ticketTab === 'active' && styles.ticketSegmentTextActive]}
-                    >
-                      Active ({activeTickets.length})
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.ticketSegmentBtn, ticketTab === 'past' && styles.ticketSegmentBtnActive]}
-                    onPress={() => setTicketTab('past')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name="checkmark-done-circle-outline"
-                      size={14}
-                      color={ticketTab === 'past' ? '#FFFFFF' : COLORS.textMuted}
-                    />
-                    <Text
-                      style={[styles.ticketSegmentText, ticketTab === 'past' && styles.ticketSegmentTextActive]}
-                    >
-                      Past &amp; Used ({pastTickets.length})
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Tickets Render */}
-              {loadingTickets ? (
-                <View style={styles.ticketsLoader}>
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                  <Text style={styles.ticketsLoaderText}>Loading your passes...</Text>
-                </View>
-              ) : displayedTickets.length > 0 ? (
-                <View style={styles.ticketsListWrapper}>
-                  {displayedTickets.map((t) => (
-                    <TicketCard
-                      key={t.id || t.ticket_code}
-                      ticket={t}
-                      onQrPress={(item) => setSelectedTicket(item)}
-                      onTransferPress={() => router.push('/(tabs)/tickets')}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyTicketsCard}>
-                  <View style={styles.emptyTicketsIconCircle}>
-                    <Ionicons name="ticket-outline" size={26} color={COLORS.textMuted} />
-                  </View>
-                  <Text style={styles.emptyTicketsTitle}>
-                    {ticketTab === 'active' ? 'No active passes' : 'No past tickets'}
-                  </Text>
-                  <Text style={styles.emptyTicketsSubtitle}>
-                    {ticketTab === 'active'
-                      ? 'You don’t have any active tickets right now. Explore upcoming concerts, festivals & events to get your pass.'
-                      : 'Tickets that have been used or past event passes will appear here.'}
-                  </Text>
-                  {ticketTab === 'active' && (
-                    <TouchableOpacity
-                      style={styles.exploreEventsBtn}
-                      onPress={() => router.push('/(tabs)')}
-                      activeOpacity={0.85}
-                    >
-                      <Ionicons name="sparkles" size={14} color="#FFFFFF" />
-                      <Text style={styles.exploreEventsBtnText}>Discover Events</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
             </View>
 
             {/* Organizer Hub Banner (if Organizer) */}

@@ -210,7 +210,6 @@ export default function EventDetailsScreen() {
       // If online gateway authorization is required (Paystack):
       if (res?.authorizationUrl) {
         try {
-          // openAuthSessionAsync intercepts the app scheme/return URL and auto-closes the browser tab
           await WebBrowser.openAuthSessionAsync(res.authorizationUrl, appReturnUrl);
         } catch (browserErr) {
           console.warn('[EventCheckout] openAuthSessionAsync fallback:', browserErr.message);
@@ -219,28 +218,65 @@ export default function EventDetailsScreen() {
       }
 
       // Auto-verify and finalize payment so tickets are instantly minted
+      let paymentConfirmed = false;
       if (res?.reference) {
-        try {
-          await verifyPaymentApi(res.reference);
-        } catch {
+        // Poll / retry verification up to 4 times (1.5s interval) in case of async callback/momo settlement
+        for (let attempt = 0; attempt < 4; attempt++) {
           try {
-            await simulatePaymentApi(res.reference, res.orderId);
+            const vRes = await verifyPaymentApi(res.reference);
+            if (
+              vRes?.status === 'success' ||
+              vRes?.order?.payment_status === 'completed' ||
+              (Array.isArray(vRes?.tickets) && vRes.tickets.length > 0)
+            ) {
+              paymentConfirmed = true;
+              break;
+            }
+          } catch (vErr) {
+            console.warn(`[EventCheckout] Verification attempt ${attempt + 1}:`, vErr.message);
+          }
+          if (attempt < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
+        }
+
+        // Test mode / development simulation fallback if gateway didn't confirm
+        if (!paymentConfirmed) {
+          try {
+            const simRes = await simulatePaymentApi(res.reference, res.orderId);
+            if (simRes?.status === 'completed') {
+              paymentConfirmed = true;
+            }
           } catch (simErr) {
-            console.warn('[EventCheckout] Auto-completion notice:', simErr.message);
+            console.warn('[EventCheckout] Simulation fallback note:', simErr.message);
           }
         }
       }
 
-      const orderRef = res?.reference || (res?.orderId ? `#TC-${res.orderId}` : '#TC-CONFIRMED');
-      setCompletedOrder({
-        orderId: res?.orderId || res?.id,
-        reference: orderRef,
-        eventTitle: event?.title,
-        venue: event?.venue || event?.location,
-        tierName: selectedTier?.name || 'General Admission',
-        quantity: ticketQuantity,
-        total: grandTotal,
-      });
+      if (paymentConfirmed) {
+        const orderRef = res?.reference || (res?.orderId ? `#TC-${res.orderId}` : '#TC-CONFIRMED');
+        setCompletedOrder({
+          orderId: res?.orderId || res?.id,
+          reference: orderRef,
+          eventTitle: event?.title,
+          venue: event?.venue || event?.location,
+          tierName: selectedTier?.name || 'General Admission',
+          quantity: ticketQuantity,
+          total: grandTotal,
+        });
+      } else {
+        Alert.alert(
+          'Payment Processing',
+          'Your payment was initiated. If you completed payment on your phone or card, your tickets will appear in My Tickets shortly once confirmed by the network.',
+          [
+            {
+              text: 'View My Tickets',
+              onPress: () => router.push('/(tabs)/tickets'),
+            },
+            { text: 'OK' },
+          ]
+        );
+      }
     } catch (err) {
       console.warn('[EventCheckout] Order creation error:', err?.message);
       const msg = err.response?.data?.message || 'Failed to place ticket order. Please check availability.';
