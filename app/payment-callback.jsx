@@ -85,7 +85,7 @@ export default function PaymentCallbackScreen() {
     if (verified && !verifying) {
       const timer = setTimeout(() => {
         router.replace('/(tabs)/tickets');
-      }, 2500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [verified, verifying, router]);

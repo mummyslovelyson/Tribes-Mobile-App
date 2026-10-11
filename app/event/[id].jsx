@@ -254,26 +254,19 @@ export default function EventDetailsScreen() {
       }
 
       if (paymentConfirmed) {
-        const orderRef = res?.reference || (res?.orderId ? `#TC-${res.orderId}` : '#TC-CONFIRMED');
-        setCompletedOrder({
-          orderId: res?.orderId || res?.id,
-          reference: orderRef,
-          eventTitle: event?.title,
-          venue: event?.venue || event?.location,
-          tierName: selectedTier?.name || 'General Admission',
-          quantity: ticketQuantity,
-          total: grandTotal,
-        });
+        setCheckoutModalOpen(false);
+        // Seamlessly take user directly to tickets wallet in mobile app
+        router.replace('/(tabs)/tickets');
       } else {
+        setCheckoutModalOpen(false);
         Alert.alert(
-          'Payment Processing',
-          'Your payment was initiated. If you completed payment on your phone or card, your tickets will appear in My Tickets shortly once confirmed by the network.',
+          'Payment Submitted',
+          'Your booking is being processed. You can view your ticket passes in your mobile wallet now.',
           [
             {
               text: 'View My Tickets',
-              onPress: () => router.push('/(tabs)/tickets'),
+              onPress: () => router.replace('/(tabs)/tickets'),
             },
-            { text: 'OK' },
           ]
         );
       }
