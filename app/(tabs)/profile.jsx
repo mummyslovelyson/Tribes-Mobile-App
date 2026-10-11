@@ -12,14 +12,16 @@ import {
   Platform,
   RefreshControl,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import Button from '../../src/components/Button';
 import Header from '../../src/components/Header';
 import Logo from '../../src/components/Logo';
-import { getMyTicketsApi } from '../../src/api/tickets';
+import { getMyTicketsApi, deleteTicketApi, clearOldTicketsApi } from '../../src/api/tickets';
 import { getUserOrdersApi } from '../../src/api/orders';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
@@ -31,10 +33,14 @@ export default function ProfileScreen() {
   // Modals state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [deleteTicketsModalOpen, setDeleteTicketsModalOpen] = useState(false);
 
   // Dashboard Metrics State
   const [ticketCount, setTicketCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
+  const [oldTickets, setOldTickets] = useState([]);
+  const [deletingTicketId, setDeletingTicketId] = useState(null);
+  const [clearingOldTickets, setClearingOldTickets] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Edit Profile Form State
@@ -100,7 +106,39 @@ export default function ProfileScreen() {
           return status === 'active' || !status;
         });
 
+        // Concluded, used, or cancelled tickets eligible for history cleanup
+        const oldList = list.filter((t) => {
+          if (!t) return false;
+          const status = String(t.status || '').toLowerCase();
+          const isUsed = Boolean(t.is_used || status === 'used');
+          const isCancelled = status === 'cancelled';
+          const isTransferred = status === 'transferred';
+          const isRefunded = status === 'refunded' || t.payment_status === 'refunded';
+
+          const dateStr = t.end_date || t.start_date;
+          let isPast = false;
+          if (dateStr) {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+              const timeStr = t.end_time || t.start_time;
+              if (timeStr && typeof timeStr === 'string') {
+                const parts = timeStr.split(':');
+                if (parts.length >= 2) {
+                  d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+                  if (d < now) isPast = true;
+                }
+              } else {
+                d.setHours(23, 59, 59, 999);
+                if (d < now) isPast = true;
+              }
+            }
+          }
+
+          return isUsed || isPast || isCancelled || isTransferred || isRefunded;
+        });
+
         setTicketCount(activeList.length);
+        setOldTickets(oldList);
       }
 
       if (ordersData.status === 'fulfilled') {
@@ -111,6 +149,75 @@ export default function ProfileScreen() {
       console.warn('[ProfileScreen] Dashboard load warning:', err.message);
     }
   }, [isAuthenticated]);
+
+  // Handle single old ticket deletion
+  const handleDeleteOldTicket = (ticket) => {
+    Alert.alert(
+      'Delete Old Ticket Pass',
+      `Are you sure you want to delete ticket pass #${ticket.ticket_number || ticket.ticket_code || ticket.id} for "${ticket.event_title || 'Event'}" from your history?\n\nThis permanently removes the pass from your wallet. Your purchase receipt remains safe under Order History.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Pass',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingTicketId(ticket.id);
+            try {
+              await deleteTicketApi(ticket.id);
+              if (Platform.OS !== 'web') {
+                try {
+                  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                } catch {}
+              }
+              Alert.alert('Deleted', 'Old ticket pass removed from your history.');
+              loadDashboardData();
+            } catch (err) {
+              Alert.alert('Error', err.response?.data?.message || 'Failed to delete ticket.');
+            } finally {
+              setDeletingTicketId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle bulk clearance of all old tickets
+  const handleClearAllOldTickets = () => {
+    if (oldTickets.length === 0) {
+      Alert.alert('No Old Tickets', 'You have no past or completed ticket passes to delete.');
+      return;
+    }
+
+    Alert.alert(
+      'Clear All Old Tickets',
+      `Delete all ${oldTickets.length} past, used, and concluded ticket passes from your wallet history?\n\nYour purchase invoices and payment receipts remain permanently preserved.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            setClearingOldTickets(true);
+            try {
+              const res = await clearOldTicketsApi();
+              if (Platform.OS !== 'web') {
+                try {
+                  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                } catch {}
+              }
+              Alert.alert('Wallet Cleaned', res?.message || 'All past passes have been cleared from your history.');
+              loadDashboardData();
+            } catch (err) {
+              Alert.alert('Error', err.response?.data?.message || 'Failed to clear past passes.');
+            } finally {
+              setClearingOldTickets(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Live Auto-Refresh Dashboard on screen focus
   useFocusEffect(
@@ -256,6 +363,14 @@ export default function ProfileScreen() {
       title: 'Order History & Receipts',
       icon: 'receipt-outline',
       onPress: () => router.push('/orders'),
+      authRequired: true,
+    },
+    {
+      id: 'delete_old_tickets',
+      title: 'Delete Old Tickets & History',
+      icon: 'trash-outline',
+      badge: oldTickets.length > 0 ? `${oldTickets.length} old` : null,
+      onPress: () => setDeleteTicketsModalOpen(true),
       authRequired: true,
     },
     ...(isAdmin
@@ -533,6 +648,31 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Quick Cleanup Old Tickets Banner */}
+            {oldTickets.length > 0 && (
+              <TouchableOpacity
+                style={styles.cleanupBanner}
+                activeOpacity={0.85}
+                onPress={() => setDeleteTicketsModalOpen(true)}
+              >
+                <View style={styles.cleanupBannerLeft}>
+                  <View style={styles.cleanupIconCircle}>
+                    <Ionicons name="trash-outline" size={17} color="#EF4444" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cleanupBannerTitle}>Past Tickets Cleanup</Text>
+                    <Text style={styles.cleanupBannerSub}>
+                      {oldTickets.length} past or used pass{oldTickets.length > 1 ? 'es' : ''} available to delete
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.cleanupBadge}>
+                  <Text style={styles.cleanupBadgeText}>{oldTickets.length} Old</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#EF4444" />
+                </View>
+              </TouchableOpacity>
+            )}
+
             {/* Organizer Hub Banner (if Organizer) */}
             {isStaffOrOrganizer && (
               <TouchableOpacity
@@ -586,6 +726,7 @@ export default function ProfileScreen() {
           <View style={styles.menuCard}>
             {MENU_ITEMS.filter((item) => !item.authRequired || isAuthenticated).map((item, index, arr) => {
               const isLast = index === arr.length - 1;
+              const isDeleteAction = item.id === 'delete_old_tickets';
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -594,10 +735,23 @@ export default function ProfileScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.menuItemLeft}>
-                    <Ionicons name={item.icon} size={20} color={COLORS.textMuted} />
-                    <Text style={styles.menuItemTitle}>{item.title}</Text>
+                    <Ionicons
+                      name={item.icon}
+                      size={20}
+                      color={isDeleteAction ? '#EF4444' : COLORS.textMuted}
+                    />
+                    <Text style={[styles.menuItemTitle, isDeleteAction && { color: COLORS.text }]}>
+                      {item.title}
+                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.border} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {item.badge ? (
+                      <View style={styles.menuItemBadge}>
+                        <Text style={styles.menuItemBadgeText}>{item.badge}</Text>
+                      </View>
+                    ) : null}
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.border} />
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -860,6 +1014,150 @@ export default function ProfileScreen() {
             />
           </ScrollView>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Old Tickets Modal */}
+      <Modal
+        visible={deleteTicketsModalOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setDeleteTicketsModalOpen(false)}
+      >
+        <SafeAreaView style={styles.modalRoot} edges={['top', 'bottom']}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+              <View style={[styles.modalHeaderBadge, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="trash" size={16} color="#EF4444" />
+              </View>
+              <Text style={styles.modalTitle}>Delete Old Tickets</Text>
+            </View>
+            <TouchableOpacity onPress={() => setDeleteTicketsModalOpen(false)} activeOpacity={0.7}>
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.deleteModalBody} showsVerticalScrollIndicator={false}>
+            <View style={styles.deleteInfoBox}>
+              <Ionicons name="information-circle-outline" size={22} color={COLORS.primary} />
+              <Text style={styles.deleteInfoText}>
+                Declutter your ticket wallet by deleting expired, used, or cancelled passes. Your original order receipts and invoices remain permanently safe in Order History.
+              </Text>
+            </View>
+
+            {oldTickets.length > 0 ? (
+              <>
+                <View style={styles.clearAllRow}>
+                  <Text style={styles.oldTicketsCountText}>
+                    {oldTickets.length} Past Pass{oldTickets.length > 1 ? 'es' : ''} Available
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.clearAllModalBtn}
+                    onPress={handleClearAllOldTickets}
+                    disabled={clearingOldTickets}
+                    activeOpacity={0.7}
+                  >
+                    {clearingOldTickets ? (
+                      <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                      <>
+                        <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                        <Text style={styles.clearAllModalBtnText}>Clear All ({oldTickets.length})</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.oldTicketsList}>
+                  {oldTickets.map((ticket) => {
+                    const isDeleting = deletingTicketId === ticket.id;
+                    const status = String(ticket.status || '').toLowerCase();
+                    const isUsed = Boolean(ticket.is_used || status === 'used');
+                    const isCancelled = status === 'cancelled';
+                    const statusLabel = isUsed ? 'USED' : isCancelled ? 'CANCELLED' : 'CONCLUDED';
+                    const dateFormatted = ticket.start_date
+                      ? new Date(ticket.start_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                      : 'Past Event';
+
+                    return (
+                      <View key={ticket.id} style={styles.oldTicketCard}>
+                        <View style={styles.oldTicketLeft}>
+                          <View style={styles.oldTicketBadgeRow}>
+                            <View
+                              style={[
+                                styles.oldTicketStatusPill,
+                                isUsed
+                                  ? styles.pillUsed
+                                  : isCancelled
+                                  ? styles.pillCancelled
+                                  : styles.pillPast,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.oldTicketStatusText,
+                                  isUsed
+                                    ? styles.textUsed
+                                    : isCancelled
+                                    ? styles.textCancelled
+                                    : styles.textPast,
+                                ]}
+                              >
+                                {statusLabel}
+                              </Text>
+                            </View>
+                            <Text style={styles.oldTicketCode}>
+                              #{ticket.ticket_number || ticket.ticket_code || ticket.id}
+                            </Text>
+                          </View>
+
+                          <Text style={styles.oldTicketTitle} numberOfLines={1}>
+                            {ticket.event_title || 'Past Event Pass'}
+                          </Text>
+
+                          <View style={styles.oldTicketMetaRow}>
+                            <Ionicons name="calendar-outline" size={13} color={COLORS.textMuted} />
+                            <Text style={styles.oldTicketMetaText}>{dateFormatted}</Text>
+                            <Text style={styles.oldTicketDot}>&bull;</Text>
+                            <Text style={styles.oldTicketMetaText}>
+                              {ticket.ticket_type_name || ticket.tier_name || 'Standard Pass'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.deleteSingleBtn}
+                          onPress={() => handleDeleteOldTicket(ticket)}
+                          disabled={isDeleting}
+                          activeOpacity={0.7}
+                        >
+                          {isDeleting ? (
+                            <ActivityIndicator size="small" color="#EF4444" />
+                          ) : (
+                            <Ionicons name="trash-outline" size={19} color="#EF4444" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <View style={styles.cleanStateBox}>
+                <View style={styles.cleanStateIconCircle}>
+                  <Ionicons name="checkmark-done-circle" size={42} color="#10B981" />
+                </View>
+                <Text style={styles.cleanStateTitle}>Ticket Wallet is Clean!</Text>
+                <Text style={styles.cleanStateSubtitle}>
+                  You do not have any past or used tickets to delete. All your active passes are current.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -1582,5 +1880,232 @@ const styles = StyleSheet.create({
   showPassText: {
     color: COLORS.textMuted,
     fontSize: 13,
+  },
+
+  // Cleanup Old Tickets Banner
+  cleanupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(239, 68, 68, 0.07)',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.22)',
+    padding: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  cleanupBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    flex: 1,
+    marginRight: SPACING.sm,
+  },
+  cleanupIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cleanupBannerTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  cleanupBannerSub: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  cleanupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
+  },
+  cleanupBadgeText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  menuItemBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+  },
+  menuItemBadgeText: {
+    color: '#EF4444',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  // Delete Old Tickets Modal Body & Cards
+  deleteModalBody: {
+    padding: SPACING.lg,
+    gap: SPACING.lg,
+    paddingBottom: SPACING.xxxl,
+  },
+  deleteInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+  },
+  deleteInfoText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    flex: 1,
+  },
+  clearAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.xs,
+  },
+  oldTicketsCountText: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  clearAllModalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  clearAllModalBtnText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  oldTicketsList: {
+    gap: SPACING.sm,
+  },
+  oldTicketCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+  },
+  oldTicketLeft: {
+    flex: 1,
+    marginRight: SPACING.md,
+    gap: 4,
+  },
+  oldTicketBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  oldTicketStatusPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.xs,
+  },
+  pillUsed: {
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+  },
+  pillCancelled: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  pillPast: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  oldTicketStatusText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  textUsed: {
+    color: '#F59E0B',
+  },
+  textCancelled: {
+    color: '#EF4444',
+  },
+  textPast: {
+    color: COLORS.textMuted,
+  },
+  oldTicketCode: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: '700',
+  },
+  oldTicketTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  oldTicketMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  oldTicketMetaText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+  },
+  oldTicketDot: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+  },
+  deleteSingleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  cleanStateBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xxl,
+    gap: SPACING.sm,
+  },
+  cleanStateIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  cleanStateTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  cleanStateSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280,
   },
 });

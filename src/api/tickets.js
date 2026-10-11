@@ -25,10 +25,24 @@ export const checkInTicketApi = async (code) => {
   return res.data;
 };
 
+export const deleteTicketApi = async (ticketId, force = false) => {
+  const res = await client.delete(`/tickets/${ticketId}`, {
+    params: force ? { force: true } : {},
+  });
+  return res.data;
+};
+
+export const clearOldTicketsApi = async () => {
+  const res = await client.post('/tickets/clear-old');
+  return res.data;
+};
+
 export default {
   getMyTicketsApi,
   getTicketDetailsApi,
   transferTicketApi,
   verifyTicketApi,
   checkInTicketApi,
+  deleteTicketApi,
+  clearOldTicketsApi,
 };

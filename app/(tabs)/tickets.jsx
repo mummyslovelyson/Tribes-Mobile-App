@@ -21,7 +21,7 @@ import { Image } from 'expo-image';
 import Header from '../../src/components/Header';
 import TicketCard from '../../src/components/TicketCard';
 import Button from '../../src/components/Button';
-import { getMyTicketsApi, transferTicketApi } from '../../src/api/tickets';
+import { getMyTicketsApi, transferTicketApi, deleteTicketApi, clearOldTicketsApi } from '../../src/api/tickets';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
 
@@ -71,6 +71,51 @@ export default function TicketsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchTickets();
+  };
+
+  const handleDeleteTicket = (ticket) => {
+    Alert.alert(
+      'Delete Old Ticket Pass',
+      `Are you sure you want to remove ticket #${ticket.ticket_code || ticket.ticket_number || ticket.id} for "${ticket.event_title || 'Event'}" from your account history?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Pass',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteTicketApi(ticket.id);
+              fetchTickets();
+            } catch (err) {
+              Alert.alert('Error', err.response?.data?.message || 'Failed to delete ticket.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearAllPastTickets = () => {
+    Alert.alert(
+      'Clear All Past Tickets',
+      'Are you sure you want to remove all past and concluded tickets from your wallet history? Your purchase receipts will remain safe.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await clearOldTicketsApi();
+              Alert.alert('History Cleaned', res?.message || 'Past tickets removed from history.');
+              fetchTickets();
+            } catch (err) {
+              Alert.alert('Error', err.response?.data?.message || 'Failed to clear past tickets.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleOpenTransfer = (ticket) => {
@@ -197,6 +242,23 @@ export default function TicketsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Past Tickets Toolbar */}
+      {activeTab === 'past' && filteredTickets.length > 0 && !loading && (
+        <View style={styles.pastToolbar}>
+          <Text style={styles.pastToolbarText}>
+            {filteredTickets.length} past pass{filteredTickets.length > 1 ? 'es' : ''} in wallet
+          </Text>
+          <TouchableOpacity
+            style={styles.clearAllBtn}
+            onPress={handleClearAllPastTickets}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={14} color="#EF4444" />
+            <Text style={styles.clearAllBtnText}>Clear All</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Tickets List */}
       {loading ? (
         <View style={styles.centerContainer}>
@@ -212,6 +274,7 @@ export default function TicketsScreen() {
               ticket={item}
               onQrPress={(t) => setSelectedTicket(t)}
               onTransferPress={(t) => handleOpenTransfer(t)}
+              onDeletePress={activeTab === 'past' ? (t) => handleDeleteTicket(t) : undefined}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -679,5 +742,34 @@ const styles = StyleSheet.create({
     height: 80,
     paddingTop: SPACING.sm + 2,
     textAlignVertical: 'top',
+  },
+  pastToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xs + 2,
+    marginBottom: SPACING.xs,
+  },
+  pastToolbarText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  clearAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 5,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  clearAllBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

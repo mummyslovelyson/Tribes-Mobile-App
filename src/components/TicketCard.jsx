@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
 
-export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
+export default function TicketCard({ ticket, onQrPress, onTransferPress, onDeletePress }) {
   if (!ticket) return null;
 
   const formatDate = (dateStr) => {
@@ -100,14 +100,25 @@ export default function TicketCard({ ticket, onQrPress, onTransferPress }) {
             </TouchableOpacity>
           )}
 
-          {(isValid || isUsed) && (
+          {(isValid || isUsed) && onQrPress && (
             <TouchableOpacity
               style={styles.qrButton}
               activeOpacity={0.8}
-              onPress={() => onQrPress && onQrPress(ticket)}
+              onPress={() => onQrPress(ticket)}
             >
               <Ionicons name="qr-code-outline" size={16} color={COLORS.text} />
               <Text style={styles.qrButtonText}>Show QR</Text>
+            </TouchableOpacity>
+          )}
+
+          {onDeletePress && (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              activeOpacity={0.8}
+              onPress={() => onDeletePress(ticket)}
+            >
+              <Ionicons name="trash-outline" size={15} color="#EF4444" />
+              <Text style={styles.deleteButtonText}>Delete</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -288,6 +299,22 @@ const styles = StyleSheet.create({
   },
   qrButtonText: {
     color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  deleteButtonText: {
+    color: '#EF4444',
     fontSize: 12,
     fontWeight: '700',
   },
