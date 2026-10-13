@@ -142,11 +142,11 @@ export default function CheckInScreen() {
     if (!raw) return '';
     let cleaned = String(raw).trim();
 
-    // If payload is JSON format
+    // 1. If payload is JSON format
     if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
       try {
         const parsed = JSON.parse(cleaned);
-        return (
+        const resolved = (
           parsed.ticket_number ||
           parsed.ticketNumber ||
           parsed.ticket_code ||
@@ -156,14 +156,31 @@ export default function CheckInScreen() {
           parsed.id ||
           cleaned
         );
-      } catch {}
+        if (resolved) return String(resolved).trim();
+      } catch { }
     }
 
-    // If payload is a URL link
-    if (cleaned.includes('/')) {
-      const parts = cleaned.split('/');
-      const lastPart = parts.filter(Boolean).pop();
-      if (lastPart) return lastPart;
+    // 2. Direct regex match for standard ticket patterns like TC-XXXXXX or TRB-XXXXXX
+    const match = cleaned.match(/\b(TC-[A-Z0-9]+|TRB-[A-Z0-9-]+)\b/i);
+    if (match) {
+      return match[1].toUpperCase();
+    }
+
+    // 3. If payload is a URL link
+    if (cleaned.includes('/') || cleaned.includes('?')) {
+      try {
+        const urlStr = cleaned.startsWith('http') ? cleaned : `https://dummy.com/${cleaned.replace(/^\/+/, '')}`;
+        const u = new URL(urlStr);
+        const queryParam = u.searchParams.get('code') || u.searchParams.get('ticket') || u.searchParams.get('ticketNumber') || u.searchParams.get('reference') || u.searchParams.get('trxref');
+        if (queryParam) return queryParam.trim();
+        const parts = u.pathname.split('/').filter(Boolean);
+        const lastPart = parts.pop();
+        if (lastPart) return lastPart.split('?')[0].trim();
+      } catch {
+        const parts = cleaned.split('/').filter(Boolean);
+        const lastPart = parts.pop() || cleaned;
+        return lastPart.split('?')[0].trim();
+      }
     }
 
     return cleaned;
@@ -187,7 +204,7 @@ export default function CheckInScreen() {
     if (Platform.OS !== 'web') {
       try {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      } catch {}
+      } catch { }
     }
 
     try {
@@ -200,7 +217,7 @@ export default function CheckInScreen() {
         if (Platform.OS !== 'web') {
           try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          } catch {}
+          } catch { }
         }
         setScanResult({
           type: 'unauthorized',
@@ -216,7 +233,7 @@ export default function CheckInScreen() {
       if (Platform.OS !== 'web') {
         try {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {}
+        } catch { }
       }
 
       setScanResult({
@@ -247,12 +264,12 @@ export default function CheckInScreen() {
       const statusType = errData.status || '';
       const errMsg = errData.message || err.message || '';
 
-      // ⚠️ DUPLICATE TICKET CHECK
+      //  DUPLICATE TICKET CHECK
       if (statusType === 'used' || errMsg.toLowerCase().includes('already used') || errMsg.toLowerCase().includes('already checked in')) {
         if (Platform.OS !== 'web') {
           try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          } catch {}
+          } catch { }
         }
 
         setScanResult({
@@ -278,7 +295,7 @@ export default function CheckInScreen() {
         if (Platform.OS !== 'web') {
           try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          } catch {}
+          } catch { }
         }
 
         setScanResult({
@@ -289,12 +306,24 @@ export default function CheckInScreen() {
 
         setSessionStats((prev) => ({ ...prev, invalid: prev.invalid + 1 }));
         logScan({ code, status: 'cancelled', attendee: errData.attendeeName || 'Unknown' });
+      } else if (err.response?.status === 401) {
+        // 🔒 SESSION EXPIRED
+        if (Platform.OS !== 'web') {
+          try {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          } catch { }
+        }
+
+        setScanResult({
+          type: 'unauthorized',
+          message: 'Organizer login session expired. Please sign out and sign in again.',
+        });
       } else if (err.response?.status === 403 || statusType === 'unauthorized') {
         // 🚫 UNAUTHORIZED
         if (Platform.OS !== 'web') {
           try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          } catch {}
+          } catch { }
         }
 
         setScanResult({
@@ -306,7 +335,7 @@ export default function CheckInScreen() {
         if (Platform.OS !== 'web') {
           try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          } catch {}
+          } catch { }
         }
 
         setScanResult({
@@ -414,12 +443,12 @@ export default function CheckInScreen() {
 
   // Viewfinder border highlight color based on scan status
   const viewportBorderColor = scanResult?.type === 'approved'
-    ? '#10B981'
+    ? 'rgba(16, 185, 129, 0.6)'
     : scanResult?.type === 'duplicate'
-    ? '#F59E0B'
-    : scanResult?.type === 'cancelled' || scanResult?.type === 'invalid' || scanResult?.type === 'unauthorized'
-    ? '#EF4444'
-    : COLORS.primary;
+      ? 'rgba(245, 158, 11, 0.6)'
+      : scanResult?.type === 'cancelled' || scanResult?.type === 'invalid' || scanResult?.type === 'unauthorized'
+        ? 'rgba(239, 68, 68, 0.45)'
+        : COLORS.borderSubtle;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -689,21 +718,6 @@ export default function CheckInScreen() {
                 </View>
               )}
 
-              {/* Quick simulation helper for dev/testing */}
-              <TouchableOpacity
-                style={styles.simulateScanBtn}
-                onPress={() => {
-                  const demoCode = organizerEvents?.[0]?.id
-                    ? `TC-${organizerEvents[0].id}-DEMO`
-                    : 'TC-GATE-DEMO-PASS';
-                  processTicket(demoCode);
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="sparkles" size={16} color={COLORS.primary} />
-                <Text style={styles.simulateScanBtnText}>Simulate QR Gate Admission (Test Pass)</Text>
-              </TouchableOpacity>
-
               {/* Automation switch: Auto-scan next ticket after 3s */}
               <View style={styles.autoCheckInRow}>
                 <View style={{ flex: 1 }}>
@@ -827,7 +841,7 @@ export default function CheckInScreen() {
                 onPress={handleResetScanner}
                 activeOpacity={0.8}
               >
-                <Ionicons name="scan-outline" size={18} color="#000000" />
+                <Ionicons name="scan-outline" size={18} color="#161D22" />
                 <Text style={styles.nextScanBtnApprovedText}>Scan Next Ticket</Text>
               </TouchableOpacity>
             </View>
@@ -838,7 +852,7 @@ export default function CheckInScreen() {
             <View style={styles.cardDuplicate}>
               <View style={styles.duplicateHeaderRow}>
                 <View style={styles.duplicateIconCircle}>
-                  <Ionicons name="warning" size={32} color="#F59E0B" />
+                  <Ionicons name="warning" size={28} color="#FBBF24" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.duplicateTitle}>DUPLICATE TICKET DETECTED</Text>
@@ -850,7 +864,7 @@ export default function CheckInScreen() {
               </View>
 
               <View style={styles.duplicateWarningBox}>
-                <Ionicons name="alert-circle" size={18} color="#F59E0B" style={{ marginTop: 2 }} />
+                <Ionicons name="alert-circle" size={18} color="#FBBF24" style={{ marginTop: 2 }} />
                 <Text style={styles.duplicateWarningText}>
                   This pass was already scanned and admitted at the entrance earlier. Do not allow duplicate entry without manager verification.
                 </Text>
@@ -874,7 +888,7 @@ export default function CheckInScreen() {
                 {scanResult.checkedInAt && (
                   <View style={styles.resultDetailRow}>
                     <Text style={styles.detailLabel}>ORIGINALLY SCANNED</Text>
-                    <Text style={[styles.detailValue, { color: '#F59E0B', fontWeight: '700' }]}>
+                    <Text style={[styles.detailValue, { color: '#FBBF24', fontWeight: '700' }]}>
                       {new Date(scanResult.checkedInAt).toLocaleString([], {
                         month: 'short',
                         day: 'numeric',
@@ -891,7 +905,7 @@ export default function CheckInScreen() {
                 onPress={handleResetScanner}
                 activeOpacity={0.8}
               >
-                <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                <Ionicons name="refresh-outline" size={18} color="#161D22" />
                 <Text style={styles.nextScanBtnWarningText}>Dismiss & Scan Next Ticket</Text>
               </TouchableOpacity>
             </View>
@@ -901,47 +915,47 @@ export default function CheckInScreen() {
           {(scanResult?.type === 'cancelled' ||
             scanResult?.type === 'invalid' ||
             scanResult?.type === 'unauthorized') && (
-            <View style={styles.cardInvalid}>
-              <View style={styles.invalidHeaderRow}>
-                <View style={styles.invalidIconCircle}>
-                  <Ionicons name="close-circle" size={32} color="#EF4444" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.invalidTitle}>
-                    {scanResult.type === 'cancelled'
-                      ? 'PASS CANCELLED'
-                      : scanResult.type === 'unauthorized'
-                      ? 'UNAUTHORIZED EVENT'
-                      : 'INVALID PASS'}
-                  </Text>
-                  <Text style={styles.invalidSubtitle}>ENTRY DENIED AT GATE</Text>
-                </View>
-                <View style={styles.invalidBadge}>
-                  <Text style={styles.invalidBadgeText}>DENIED</Text>
-                </View>
-              </View>
-
-              <Text style={styles.invalidMessageText}>{scanResult.message}</Text>
-
-              {scanResult.ticket?.attendeeName && (
-                <View style={styles.resultDetailsBox}>
-                  <View style={styles.resultDetailRow}>
-                    <Text style={styles.detailLabel}>ATTENDEE NAME</Text>
-                    <Text style={styles.detailValue}>{scanResult.ticket.attendeeName}</Text>
+              <View style={styles.cardInvalid}>
+                <View style={styles.invalidHeaderRow}>
+                  <View style={styles.invalidIconCircle}>
+                    <Ionicons name="close-circle" size={28} color="#F87171" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.invalidTitle}>
+                      {scanResult.type === 'cancelled'
+                        ? 'PASS CANCELLED'
+                        : scanResult.type === 'unauthorized'
+                          ? 'UNAUTHORIZED EVENT'
+                          : 'INVALID PASS'}
+                    </Text>
+                    <Text style={styles.invalidSubtitle}>ENTRY DENIED AT GATE</Text>
+                  </View>
+                  <View style={styles.invalidBadge}>
+                    <Text style={styles.invalidBadgeText}>DENIED</Text>
                   </View>
                 </View>
-              )}
 
-              <TouchableOpacity
-                style={styles.nextScanBtnDanger}
-                onPress={handleResetScanner}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.nextScanBtnDangerText}>Scan Next Pass</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                <Text style={styles.invalidMessageText}>{scanResult.message}</Text>
+
+                {scanResult.ticket?.attendeeName && (
+                  <View style={styles.resultDetailsBox}>
+                    <View style={styles.resultDetailRow}>
+                      <Text style={styles.detailLabel}>ATTENDEE NAME</Text>
+                      <Text style={styles.detailValue}>{scanResult.ticket.attendeeName}</Text>
+                    </View>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.nextScanBtnDanger}
+                  onPress={handleResetScanner}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="refresh-outline" size={18} color="#161D22" />
+                  <Text style={styles.nextScanBtnDangerText}>Scan Next Pass</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
           {/* RECENT SESSION SCANS LOG */}
           {recentScans.length > 0 && (
@@ -961,16 +975,16 @@ export default function CheckInScreen() {
                         item.status === 'approved'
                           ? 'checkmark-circle'
                           : item.status === 'duplicate'
-                          ? 'warning'
-                          : 'close-circle'
+                            ? 'warning'
+                            : 'close-circle'
                       }
                       size={18}
                       color={
                         item.status === 'approved'
-                          ? '#10B981'
+                          ? '#34D399'
                           : item.status === 'duplicate'
-                          ? '#F59E0B'
-                          : '#EF4444'
+                            ? '#FBBF24'
+                            : '#F87171'
                       }
                     />
                     <View style={{ flex: 1 }}>
@@ -985,10 +999,10 @@ export default function CheckInScreen() {
                       style={[
                         styles.historyStatusText,
                         item.status === 'approved'
-                          ? { color: '#10B981' }
+                          ? { color: '#34D399' }
                           : item.status === 'duplicate'
-                          ? { color: '#F59E0B' }
-                          : { color: '#EF4444' },
+                            ? { color: '#FBBF24' }
+                            : { color: '#F87171' },
                       ]}
                     >
                       {item.status.toUpperCase()}
@@ -1177,7 +1191,12 @@ const styles = StyleSheet.create({
   },
   scoreboardRow: {
     flexDirection: 'row',
-    gap: SPACING.xs,
+    gap: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    padding: SPACING.xs,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   scoreBadge: {
     flex: 1,
@@ -1185,22 +1204,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 7,
+    paddingVertical: 9,
     paddingHorizontal: 8,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
   },
   scoreBadgeApproved: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
   },
   scoreBadgeDuplicate: {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   scoreBadgeInvalid: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(239, 68, 68, 0.25)',
   },
   scoreNumber: {
     color: COLORS.text,
@@ -1263,7 +1281,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#000000',
-    borderWidth: 2,
+    borderWidth: 1,
   },
   cameraErrorOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1274,7 +1292,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   cameraErrorTitle: {
-    color: '#000000ff',
+    color: COLORS.text,
     fontSize: 16,
     fontWeight: '800',
     marginTop: SPACING.sm,
@@ -1297,24 +1315,6 @@ const styles = StyleSheet.create({
   errorActionBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
-  },
-  simulateScanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: RADIUS.lg,
-    backgroundColor: 'rgba(239, 239, 241, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 239, 241, 0.15)',
-    marginTop: SPACING.xs,
-  },
-  simulateScanBtnText: {
-    color: COLORS.text,
-    fontSize: 13,
     fontWeight: '700',
   },
   cameraPlaceholder: {
@@ -1421,12 +1421,12 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: RADIUS.sm,
   },
   laserLine: {
-    height: 2.5,
-    backgroundColor: '#10B981',
-    shadowColor: '#10B981',
+    height: 2,
+    backgroundColor: COLORS.accent,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
   },
   viewportOverlayState: {
     ...StyleSheet.absoluteFillObject,
@@ -1547,12 +1547,12 @@ const styles = StyleSheet.create({
   // RESULT CARD STYLES
   // ========================================================
 
-  // 1. APPROVED CARD (GREEN)
+  // 1. APPROVED CARD (EMERALD REFINED ACCENT)
   cardApproved: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
-    borderWidth: 2,
-    borderColor: '#10B981',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
     padding: SPACING.lg,
     gap: SPACING.md,
   },
@@ -1565,53 +1565,56 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   approvedTitle: {
-    color: '#10B981',
-    fontSize: 18,
-    fontWeight: '900',
+    color: '#34D399',
+    fontSize: 16,
+    fontWeight: '800',
     letterSpacing: 0.3,
   },
   approvedSubtitle: {
-    color: '#6EE7B7',
+    color: COLORS.textMuted,
     fontSize: 12,
     fontWeight: '600',
   },
   approvedBadge: {
-    backgroundColor: '#10B981',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
   },
   approvedBadgeText: {
-    color: '#000000',
+    color: '#34D399',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   nextScanBtnApproved: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.primary,
     paddingVertical: 13,
     borderRadius: RADIUS.md,
   },
   nextScanBtnApprovedText: {
-    color: '#000000',
+    color: '#161D22',
     fontSize: 14,
     fontWeight: '800',
   },
 
-  // 2. DUPLICATE CARD (AMBER / WARNING)
+  // 2. DUPLICATE CARD (AMBER REFINED ACCENT)
   cardDuplicate: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
-    borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
     padding: SPACING.lg,
     gap: SPACING.md,
   },
@@ -1624,69 +1627,72 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   duplicateTitle: {
-    color: '#F59E0B',
-    fontSize: 16,
-    fontWeight: '900',
+    color: '#FBBF24',
+    fontSize: 15,
+    fontWeight: '800',
     letterSpacing: 0.2,
   },
   duplicateSubtitle: {
-    color: '#FCD34D',
+    color: COLORS.textMuted,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   duplicateBadge: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   duplicateBadgeText: {
-    color: '#000000',
+    color: '#FBBF24',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   duplicateWarningBox: {
     flexDirection: 'row',
     gap: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: COLORS.surface,
     padding: SPACING.sm,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: 'rgba(245, 158, 11, 0.2)',
   },
   duplicateWarningText: {
     flex: 1,
-    color: '#FDE68A',
+    color: '#CBD5E1',
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   nextScanBtnWarning: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#F59E0B',
+    backgroundColor: COLORS.primary,
     paddingVertical: 13,
     borderRadius: RADIUS.md,
   },
   nextScanBtnWarningText: {
-    color: '#000000',
+    color: '#161D22',
     fontSize: 14,
     fontWeight: '800',
   },
 
-  // 3. INVALID CARD (RED)
+  // 3. INVALID CARD (RED REFINED ACCENT)
   cardInvalid: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    backgroundColor: COLORS.card,
     borderRadius: RADIUS.xl,
-    borderWidth: 2,
-    borderColor: '#EF4444',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
     padding: SPACING.lg,
     gap: SPACING.md,
   },
@@ -1699,47 +1705,52 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   invalidTitle: {
-    color: '#EF4444',
-    fontSize: 17,
-    fontWeight: '900',
+    color: '#F87171',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   invalidSubtitle: {
-    color: '#FCA5A5',
+    color: COLORS.textMuted,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   invalidBadge: {
-    backgroundColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: RADIUS.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
   },
   invalidBadgeText: {
-    color: '#FFFFFF',
+    color: '#F87171',
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   invalidMessageText: {
-    color: '#FECACA',
+    color: COLORS.textSecondary,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
+    lineHeight: 18,
   },
   nextScanBtnDanger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#EF4444',
+    backgroundColor: COLORS.primary,
     paddingVertical: 13,
     borderRadius: RADIUS.md,
   },
   nextScanBtnDangerText: {
-    color: '#FFFFFF',
+    color: '#161D22',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -1815,8 +1826,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: COLORS.surface,
-    padding: 8,
-    borderRadius: RADIUS.sm,
+    padding: 10,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   historyAttendee: {
     color: COLORS.text,
