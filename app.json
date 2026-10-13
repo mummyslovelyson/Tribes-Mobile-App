@@ -9,7 +9,10 @@
     "scheme": "tribescliqs",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Tribes & Cliqs to use your camera to scan ticket QR codes at event entrances."
+      }
     },
     "android": {
       "package": "com.tribesandcliqs.app",
@@ -17,7 +20,11 @@
         "backgroundColor": "#1C232B",
         "foregroundImage": "./assets/images/logo.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -25,6 +32,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Tribes & Cliqs to use your camera to scan ticket QR codes at event entrances."
+        }
+      ],
       [
         "expo-splash-screen",
         {

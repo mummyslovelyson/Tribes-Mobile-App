@@ -16,12 +16,14 @@ export const transferTicketApi = async (ticketId, transferData) => {
 };
 
 export const verifyTicketApi = async (code) => {
-  const res = await client.get(`/tickets/verify/${code}`);
+  const safeCode = encodeURIComponent(String(code || '').trim());
+  const res = await client.get(`/tickets/verify/${safeCode}`);
   return res.data;
 };
 
 export const checkInTicketApi = async (code) => {
-  const res = await client.post(`/tickets/verify/${code}/check-in`);
+  const safeCode = encodeURIComponent(String(code || '').trim());
+  const res = await client.post(`/tickets/verify/${safeCode}/check-in`);
   return res.data;
 };
 

@@ -41,8 +41,12 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
-      router.replace('/(tabs)');
+      const data = await login(email.trim(), password);
+      if (data?.user?.role === 'organizer' || data?.user?.role === 'staff') {
+        router.replace('/organizer');
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (err) {
       console.warn('[LoginScreen] Login error:', err?.message);
       const data = err.response?.data;

@@ -134,10 +134,12 @@ export const AuthProvider = ({ children }) => {
               ]);
             }
           } catch (profileErr) {
-            console.warn('[AuthProvider] Profile fetch check on boot:', profileErr?.message);
             if (profileErr?.response?.status === 401) {
-              // Token was rejected; clear state so app does not get stuck in ghost session
+              // Stored session has expired; clear cached state so user can log in cleanly
+              console.log('[AuthProvider] Previous session expired. Cleared cached credentials.');
               clearAuth();
+            } else {
+              console.warn('[AuthProvider] Profile fetch check on boot:', profileErr?.message);
             }
           }
         }

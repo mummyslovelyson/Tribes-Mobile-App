@@ -502,6 +502,14 @@ export default function OrganizerDashboardScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      style={[styles.eventActionBtn, { borderColor: 'rgba(16, 185, 129, 0.4)', backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}
+                      onPress={() => router.push(`/check-in?eventId=${item.id}&eventTitle=${encodeURIComponent(item.title)}`)}
+                    >
+                      <Ionicons name="qr-code-outline" size={16} color={COLORS.success} />
+                      <Text style={[styles.eventActionBtnText, { color: COLORS.success, fontWeight: '700' }]}>Gate Scanner</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={styles.eventActionBtn}
                       onPress={() => handleTogglePublish(item)}
                     >

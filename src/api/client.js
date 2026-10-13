@@ -141,10 +141,9 @@ client.interceptors.response.use(
           }
         }
       } catch (refreshErr) {
-        console.warn('[API Client] Refresh token failed:', refreshErr?.message);
-        // Only clear tokens if the refresh token is genuinely rejected as invalid/expired (400, 401, 403)
         const isAuthRejection = refreshErr?.response?.status && [400, 401, 403].includes(refreshErr.response.status);
         if (isAuthRejection) {
+          console.log('[API Client] Cached session expired (401). Cleared local tokens for fresh sign in.');
           try {
             await AsyncStorage.multiRemove([
               'tc_token',
@@ -160,6 +159,8 @@ client.interceptors.response.use(
           } catch (clearErr) {
             console.warn('[API Client] Error clearing tokens on 401:', clearErr);
           }
+        } else {
+          console.warn('[API Client] Refresh token failed:', refreshErr?.message);
         }
       }
     }
