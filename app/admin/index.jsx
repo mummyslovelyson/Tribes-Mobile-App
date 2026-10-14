@@ -495,6 +495,7 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
         >
           {[
             { key: 'overview', label: 'Overview', icon: 'stats-chart-outline' },
+            { key: 'checkin', label: 'Gate Check-In', icon: 'qr-code-outline' },
             { key: 'events', label: 'Events', icon: 'calendar-outline' },
             { key: 'organizers', label: 'Organizers', icon: 'people-outline' },
             { key: 'payouts', label: 'Payouts', icon: 'cash-outline' },
@@ -506,7 +507,13 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
               <TouchableOpacity
                 key={tab.key}
                 activeOpacity={0.8}
-                onPress={() => setActiveTab(tab.key)}
+                onPress={() => {
+                  if (tab.key === 'checkin') {
+                    router.push('/check-in');
+                  } else {
+                    setActiveTab(tab.key);
+                  }
+                }}
                 style={[styles.tabButton, isSelected && styles.tabButtonActive]}
               >
                 <Ionicons
@@ -599,6 +606,29 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
                   <Text style={styles.statFootnote}>Passes checked-in &amp; valid</Text>
                 </View>
               </View>
+
+              {/* Gate Pass Check-In Quick Action */}
+              <TouchableOpacity
+                style={styles.checkInQuickCard}
+                onPress={() => router.push('/check-in')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.checkInQuickIcon}>
+                  <Ionicons name="qr-code" size={24} color="#161D22" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.checkInQuickTitle}>Gate Pass Check-In</Text>
+                    <View style={styles.checkInLiveBadge}>
+                      <Text style={styles.checkInLiveBadgeText}>LIVE GATE SCANNER</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.checkInQuickSubtitle}>
+                    Scan attendee QR codes, verify passes &amp; monitor admissions across all events
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+              </TouchableOpacity>
 
               {/* Pending Approvals Notice */}
               {(Number(stats?.pendingEvents) > 0 || Number(stats?.pendingOrganizers) > 0 || Number(stats?.pendingWithdrawals) > 0) && (
@@ -1692,5 +1722,48 @@ const styles = StyleSheet.create({
     color: COLORS.buttonText,
     fontSize: 14,
     fontWeight: '600',
+  },
+  checkInQuickCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.md,
+    gap: SPACING.md,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 239, 241, 0.2)',
+  },
+  checkInQuickIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkInQuickTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  checkInLiveBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+  },
+  checkInLiveBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#34D399',
+    letterSpacing: 0.5,
+  },
+  checkInQuickSubtitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+    lineHeight: 16,
   },
 });
