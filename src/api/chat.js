@@ -13,4 +13,24 @@ export const sendChatMessageApi = async (message, conversationHistory = [], cont
   return res.data;
 };
 
-export default { sendChatMessageApi };
+export const createAgentBookingHoldApi = async (data) => {
+  const res = await client.post('/chat/book', data);
+  return res.data;
+};
+
+export const verifyAgentPaymentApi = async (reference, orderId) => {
+  const res = await client.post('/chat/verify-payment', { reference, orderId });
+  return res.data;
+};
+
+export const resendAgentTicketApi = async (ticketId, channel = 'email') => {
+  const res = await client.post('/chat/resend', { ticketId, channel });
+  return res.data;
+};
+
+export default {
+  sendChatMessageApi,
+  createAgentBookingHoldApi,
+  verifyAgentPaymentApi,
+  resendAgentTicketApi,
+};

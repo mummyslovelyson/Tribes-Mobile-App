@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -86,7 +86,7 @@ export default function CheckInScreen() {
   const [recentScans, setRecentScans] = useState([]);
 
   // Fetch true database check-in stats & recent logs (visible to both Admin and Organizer)
-  const loadCheckInStats = async (eventId = selectedEventId) => {
+  const loadCheckInStats = useCallback(async (eventId = selectedEventId) => {
     if (!isAuthenticated || (!isOrganizer && !isAdmin)) return;
     try {
       const params = {};
@@ -117,7 +117,7 @@ export default function CheckInScreen() {
     } catch (err) {
       console.warn('[CheckIn] Load live stats error:', err?.message);
     }
-  };
+  }, [isAuthenticated, isOrganizer, isAdmin, selectedEventId]);
 
   // Auto-resume timer
   const autoResumeTimerRef = useRef(null);
@@ -172,7 +172,7 @@ export default function CheckInScreen() {
   // Load live DB check-in stats on mount and when selectedEventId changes
   useEffect(() => {
     loadCheckInStats(selectedEventId);
-  }, [isAuthenticated, isOrganizer, isAdmin, selectedEventId]);
+  }, [loadCheckInStats, selectedEventId]);
 
   // Clean timer on unmount
   useEffect(() => {
@@ -600,7 +600,7 @@ export default function CheckInScreen() {
                   <Text style={styles.permissionTitle}>Mobile App Camera Scanning</Text>
                   <Text style={styles.permissionText}>
                     Hardware camera QR scanning with expo-camera is powered natively on Android or iOS.
-                    On web browsers, please use the "Manual Code" tab to verify passes, or use the Organizer Web Portal.
+                    On web browsers, please use the &quot;Manual Code&quot; tab to verify passes, or use the Organizer Web Portal.
                   </Text>
                   <Button
                     title="Switch to Manual Code Entry"

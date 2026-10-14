@@ -63,10 +63,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Cliqs Bot',
+          title: 'Cliqs AI',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+              name={focused ? 'sparkles' : 'sparkles-outline'}
               size={focused ? 30 : 27}
               color={focused ? COLORS.primary : color}
             />
