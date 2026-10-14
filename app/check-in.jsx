@@ -40,22 +40,26 @@ export default function CheckInScreen() {
   const [torch, setTorch] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [autoResume, setAutoResume] = useState(true);
+  const hasRequestedPermissionRef = useRef(false);
 
-  // Auto-request camera permissions on mount if not yet requested
+  // Auto-request camera permissions once on mount if not yet granted
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      try {
-        if (!permission || (!permission.granted && permission.canAskAgain)) {
-          const res = await requestPermission();
+    if (hasRequestedPermissionRef.current) return;
+    if (!permission) return;
+
+    if (!permission.granted && permission.canAskAgain) {
+      hasRequestedPermissionRef.current = true;
+      requestPermission()
+        .then((res) => {
           if (mounted && res?.granted) {
             setCameraError(null);
           }
-        }
-      } catch (err) {
-        console.warn('[CheckIn] Initial camera permission request notice:', err?.message);
-      }
-    })();
+        })
+        .catch((err) => {
+          console.warn('[CheckIn] Initial camera permission request notice:', err?.message);
+        });
+    }
     return () => { mounted = false; };
   }, [permission, requestPermission]);
 
@@ -588,7 +592,23 @@ export default function CheckInScreen() {
           {/* CAMERA SCANNER TAB */}
           {activeTab === 'scanner' && (
             <View style={styles.scannerWrapper}>
-              {!permission ? (
+              {Platform.OS === 'web' ? (
+                <View style={styles.webFallbackCard}>
+                  <View style={styles.permissionIconCircle}>
+                    <Ionicons name="camera-outline" size={36} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.permissionTitle}>Mobile App Camera Scanning</Text>
+                  <Text style={styles.permissionText}>
+                    Hardware camera QR scanning with expo-camera is powered natively on Android or iOS.
+                    On web browsers, please use the "Manual Code" tab to verify passes, or use the Organizer Web Portal.
+                  </Text>
+                  <Button
+                    title="Switch to Manual Code Entry"
+                    onPress={() => setActiveTab('manual')}
+                    style={styles.permissionBtn}
+                  />
+                </View>
+              ) : !permission ? (
                 <View style={styles.cameraPlaceholder}>
                   <ActivityIndicator size="large" color={COLORS.primary} />
                   <Text style={styles.cameraStateText}>Initializing camera hardware...</Text>
@@ -616,7 +636,7 @@ export default function CheckInScreen() {
                     Grant camera permission so organizers can scan attendee QR codes live at the gate entrance.
                   </Text>
                   <Button
-                    title={permission.canAskAgain ? "Allow Camera Access" : "Open Phone Settings"}
+                    title={permission.canAskAgain !== false ? "Allow Camera Access" : "Open Phone Settings"}
                     onPress={async () => {
                       if (permission.canAskAgain) {
                         try {
@@ -646,7 +666,7 @@ export default function CheckInScreen() {
                     facing={facing}
                     enableTorch={torch}
                     barcodeScannerSettings={{
-                      barcodeTypes: ['qr', 'aztec', 'ean13', 'code128', 'pdf417'],
+                      barcodeTypes: ['qr'],
                     }}
                     onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
                     onCameraReady={() => {
@@ -1370,6 +1390,15 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 13,
     fontWeight: '600',
+  },
+  webFallbackCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    gap: SPACING.sm,
   },
   permissionCard: {
     backgroundColor: COLORS.card,

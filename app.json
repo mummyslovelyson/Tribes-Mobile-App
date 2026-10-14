@@ -35,7 +35,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Tribes & Cliqs to use your camera to scan ticket QR codes at event entrances."
+          "cameraPermission": "Allow Tribes & Cliqs to use your camera to scan ticket QR codes at event entrances.",
+          "microphonePermission": false
         }
       ],
       [
