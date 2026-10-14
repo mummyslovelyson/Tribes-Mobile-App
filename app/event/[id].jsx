@@ -253,23 +253,14 @@ export default function EventDetailsScreen() {
         }
       }
 
-      if (paymentConfirmed) {
-        setCheckoutModalOpen(false);
-        // Seamlessly take user directly to tickets wallet in mobile app
-        router.replace('/(tabs)/tickets');
-      } else {
-        setCheckoutModalOpen(false);
-        Alert.alert(
-          'Payment Submitted',
-          'Your booking is being processed. You can view your ticket passes in your mobile wallet now.',
-          [
-            {
-              text: 'View My Tickets',
-              onPress: () => router.replace('/(tabs)/tickets'),
-            },
-          ]
-        );
-      }
+      // Ensure any remaining browser modal is dismissed
+      try {
+        await WebBrowser.dismissBrowser();
+      } catch {}
+
+      setCheckoutModalOpen(false);
+      // Immediately navigate to mobile tickets wallet so user can view purchased ticket
+      router.replace('/(tabs)/tickets');
     } catch (err) {
       console.warn('[EventCheckout] Order creation error:', err?.message);
       const msg = err.response?.data?.message || 'Failed to place ticket order. Please check availability.';

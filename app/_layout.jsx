@@ -3,12 +3,16 @@ import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/constants/theme';
 import Logo from '../src/components/Logo';
 import { getMobileConfig } from '../src/api/mobile';
 import MaintenanceScreen from '../src/components/MaintenanceScreen';
+
+// Handle auth/payment session completion to automatically dismiss in-app browser
+WebBrowser.maybeCompleteAuthSession();
 
 // Prevent native splash screen from hiding prematurely while bundling
 SplashScreen.preventAutoHideAsync().catch(() => {});
