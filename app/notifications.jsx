@@ -205,6 +205,9 @@ export default function NotificationsScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => String(item.id)}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={

@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -103,6 +104,10 @@ export default function SavedEventsScreen() {
         <FlatList
           data={events}
           keyExtractor={(item) => `saved-${item.id}`}
+          initialNumToRender={5}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'}
           renderItem={({ item }) => (
             <EventCard event={item} onFavoriteChange={handleFavoriteChange} />
           )}

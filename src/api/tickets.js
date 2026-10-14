@@ -39,12 +39,18 @@ export const clearOldTicketsApi = async () => {
   return res.data;
 };
 
+export const getCheckInStatsApi = async (params = {}) => {
+  const res = await client.get('/tickets/check-in/stats', { params });
+  return res.data;
+};
+
 export default {
   getMyTicketsApi,
   getTicketDetailsApi,
   transferTicketApi,
   verifyTicketApi,
   checkInTicketApi,
+  getCheckInStatsApi,
   deleteTicketApi,
   clearOldTicketsApi,
 };

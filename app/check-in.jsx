@@ -21,7 +21,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import Header from '../src/components/Header';
 import Button from '../src/components/Button';
-import { checkInTicketApi } from '../src/api/tickets';
+import { checkInTicketApi, getCheckInStatsApi } from '../src/api/tickets';
 import { getOrganizerEventsApi } from '../src/api/organizer';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../src/constants/theme';
@@ -70,15 +70,50 @@ export default function CheckInScreen() {
   const [loading, setLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null); // { type: 'approved' | 'duplicate' | 'cancelled' | 'invalid' | 'unauthorized', ticket, message, checkedInAt }
 
-  // Session Statistics
+  // Session Statistics (Live Synced from DB)
   const [sessionStats, setSessionStats] = useState({
     admitted: 0,
     duplicates: 0,
     invalid: 0,
+    totalTickets: 0,
   });
 
-  // Recent scan history (session log)
+  // Recent scan history (session & database log)
   const [recentScans, setRecentScans] = useState([]);
+
+  // Fetch true database check-in stats & recent logs (visible to both Admin and Organizer)
+  const loadCheckInStats = async (eventId = selectedEventId) => {
+    if (!isAuthenticated || (!isOrganizer && !isAdmin)) return;
+    try {
+      const params = {};
+      if (eventId && eventId !== 'all') {
+        params.eventId = eventId;
+      }
+      const res = await getCheckInStatsApi(params);
+      if (res?.success && res?.stats) {
+        setSessionStats((prev) => ({
+          ...prev,
+          admitted: res.stats.admitted ?? prev.admitted,
+          totalTickets: res.stats.totalTickets ?? prev.totalTickets,
+          remaining: res.stats.remaining ?? prev.remaining,
+        }));
+        if (Array.isArray(res.recentScans) && res.recentScans.length > 0) {
+          setRecentScans((prev) => {
+            const map = new Map();
+            res.recentScans.forEach((s) => map.set(s.code || s.id, s));
+            prev.forEach((s) => {
+              if (!map.has(s.code || s.id)) {
+                map.set(s.code || s.id, s);
+              }
+            });
+            return Array.from(map.values()).slice(0, 15);
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[CheckIn] Load live stats error:', err?.message);
+    }
+  };
 
   // Auto-resume timer
   const autoResumeTimerRef = useRef(null);
@@ -111,7 +146,7 @@ export default function CheckInScreen() {
     return () => animLoop?.stop();
   }, [activeTab, scanned, scanAnim]);
 
-  // Load organizer events for event selector
+  // Load organizer / admin events for event selector
   useEffect(() => {
     if (isAuthenticated && (isOrganizer || isAdmin)) {
       getOrganizerEventsApi()
@@ -129,6 +164,11 @@ export default function CheckInScreen() {
         .catch((err) => console.warn('[CheckIn] Load events warning:', err?.message));
     }
   }, [isAuthenticated, isOrganizer, isAdmin, searchParams?.eventId]);
+
+  // Load live DB check-in stats on mount and when selectedEventId changes
+  useEffect(() => {
+    loadCheckInStats(selectedEventId);
+  }, [isAuthenticated, isOrganizer, isAdmin, selectedEventId]);
 
   // Clean timer on unmount
   useEffect(() => {
@@ -348,6 +388,7 @@ export default function CheckInScreen() {
       }
     } finally {
       setLoading(false);
+      loadCheckInStats(selectedEventId);
     }
   };
 
@@ -455,7 +496,7 @@ export default function CheckInScreen() {
       {/* Screen Header */}
       <Header
         title="Gate Check-In"
-        subtitle={`Organizer: ${user?.name || user?.email || 'Staff'}`}
+        subtitle={isAdmin ? `Admin: ${user?.name || user?.email || 'Administrator'}` : `Organizer: ${user?.name || user?.email || 'Staff'}`}
         showNotification={false}
       />
 

@@ -28,7 +28,7 @@ import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, isAdmin, isOrganizer, logout, updateProfile, changePassword, refreshProfile } = useAuth();
+  const { user, isAuthenticated, isAdmin, isOrganizer, logout, deleteAccount, updateProfile, changePassword, refreshProfile } = useAuth();
 
   // Modals state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -326,6 +326,29 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? All your personal details, profile data, and wallet passes will be permanently removed. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Forever',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              Alert.alert('Account Deleted', 'Your account has been permanently removed.');
+            } catch (err) {
+              const msg = err.response?.data?.message || 'Could not delete account. Please try again.';
+              Alert.alert('Delete Failed', msg);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const isStaffOrOrganizer = isOrganizer || user?.role === 'organizer' || user?.role === 'admin' || user?.role === 'staff';
@@ -767,6 +790,18 @@ export default function ProfileScreen() {
             style={styles.logoutBtn}
             textStyle={styles.logoutText}
           />
+        )}
+
+        {/* Delete Account (Account Self-Service Deletion) */}
+        {isAuthenticated && (
+          <TouchableOpacity
+            style={styles.deleteAccountBtn}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={15} color="#F87171" />
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
+          </TouchableOpacity>
         )}
 
         {/* App Version Info */}
@@ -2107,5 +2142,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     maxWidth: 280,
+  },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  deleteAccountText: {
+    color: '#F87171',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

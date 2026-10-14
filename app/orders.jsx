@@ -346,6 +346,10 @@ export default function OrdersScreen() {
           data={orders}
           keyExtractor={(item) => `order-${item.id}`}
           renderItem={renderOrderItem}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={

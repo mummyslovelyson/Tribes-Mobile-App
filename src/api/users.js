@@ -45,9 +45,15 @@ export const getFollowingApi = async (params = {}) => {
   return res.data;
 };
 
+export const deleteAccountApi = async () => {
+  const res = await client.delete('/users/account');
+  return res.data;
+};
+
 export default {
   getProfileApi,
   updateProfileApi,
+  deleteAccountApi,
   getFavoritesApi,
   toggleFavoriteApi,
   getNotificationsApi,

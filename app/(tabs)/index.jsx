@@ -9,6 +9,7 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,8 +40,17 @@ export default function ExploreScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [mobileConfig, setMobileConfig] = useState(null);
+
+  // Debounce search query by 350ms to prevent network flooding and keystroke lag
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchMobileConfig = useCallback(async () => {
     try {
@@ -77,8 +87,8 @@ export default function ExploreScreen() {
       if (selectedCategory && selectedCategory !== 'All') {
         params.category = selectedCategory;
       }
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
       }
 
       const data = await getEventsApi(params);
@@ -89,7 +99,7 @@ export default function ExploreScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, debouncedSearch]);
 
   useEffect(() => {
     fetchEvents();
@@ -195,6 +205,10 @@ export default function ExploreScreen() {
           data={filteredEvents}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <EventCard event={item} />}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS !== 'web'}
           ListHeaderComponent={
             !searchQuery && selectedCategory === 'All' && mobileConfig?.banners?.length > 0 ? (
               <BannerCarousel banners={mobileConfig.banners} />

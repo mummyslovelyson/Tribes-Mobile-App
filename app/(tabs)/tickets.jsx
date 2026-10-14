@@ -269,6 +269,10 @@ export default function TicketsScreen() {
         <FlatList
           data={filteredTickets}
           keyExtractor={(item) => String(item.id)}
+          initialNumToRender={5}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'}
           renderItem={({ item }) => (
             <TicketCard
               ticket={item}

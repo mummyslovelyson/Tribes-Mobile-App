@@ -13,6 +13,7 @@ import {
   getProfileApi,
   updateProfileApi,
 } from '../api/auth';
+import { deleteAccountApi } from '../api/users';
 import { onUnauthorized } from '../api/client';
 
 const AuthContext = createContext({
@@ -28,6 +29,7 @@ const AuthContext = createContext({
   clearAuth: () => {},
   login: async () => {},
   register: async () => {},
+  deleteAccount: async () => {},
   verifyOtp: async () => {},
   resendOtp: async () => {},
   forgotPassword: async () => {},
@@ -70,6 +72,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const clearAuth = useCallback(async () => {
+    setToken(null);
+    setRefreshToken(null);
+    setUser(null);
+
     try {
       await AsyncStorage.multiRemove([
         'tc_token',
@@ -82,9 +88,6 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn('[AuthProvider] Clear auth storage warning:', err);
     }
-    setToken(null);
-    setRefreshToken(null);
-    setUser(null);
   }, []);
 
   // Listen for unauthorized 401 events from the API client when refresh fails
@@ -237,13 +240,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    try {
-      const storedRefresh = refreshToken || (await AsyncStorage.getItem('tc_refresh'));
-      await logoutApi(storedRefresh);
-    } catch (err) {
-      console.warn('[AuthProvider] Backend logout call warning:', err);
-    } finally {
-      await clearAuth();
+    const storedRefresh = refreshToken;
+    // 1. Immediately reset memory state & local storage for instant zero-delay signout
+    await clearAuth();
+
+    // 2. Fire and forget server-side session revocation in background
+    if (storedRefresh) {
+      logoutApi(storedRefresh).catch((err) => {
+        console.warn('[AuthProvider] Backend logout call notice:', err?.message);
+      });
     }
   };
 
@@ -262,6 +267,14 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn('[AuthProvider] refreshProfile error:', err);
       throw err;
+    }
+  };
+
+  const deleteAccount = async () => {
+    try {
+      await deleteAccountApi();
+    } finally {
+      await clearAuth();
     }
   };
 
@@ -296,6 +309,7 @@ export const AuthProvider = ({ children }) => {
         changePassword,
         updateProfile,
         logout,
+        deleteAccount,
         refreshProfile,
       }}
     >
