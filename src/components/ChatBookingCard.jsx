@@ -208,18 +208,18 @@ export default function ChatBookingCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#14181C',
+    backgroundColor: COLORS.surface, // #161D22
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: '#2E363E',
+    borderColor: COLORS.border,
     padding: SPACING.md,
     marginVertical: SPACING.xs,
   },
   reservedBorder: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderColor: COLORS.borderSubtle,
   },
   completedBorder: {
-    borderColor: 'rgba(16, 185, 129, 0.6)',
+    borderColor: COLORS.silver,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: COLORS.border,
     marginBottom: SPACING.sm,
   },
   headerLeft: {
@@ -240,7 +240,9 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -259,27 +261,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: COLORS.border,
   },
   badgeTextAmber: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: COLORS.textSecondary,
   },
   badgeSuccess: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderColor: COLORS.silver,
   },
   badgeTextSuccess: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#10B981',
+    color: COLORS.text,
   },
   timerBadge: {
     flexDirection: 'row',
@@ -288,28 +290,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: COLORS.border,
   },
   timerExpired: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: COLORS.textMuted,
   },
   timerText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#10B981',
+    color: COLORS.text,
     fontVariant: ['tabular-nums'],
   },
   timerTextExpired: {
-    color: '#EF4444',
+    color: COLORS.textMuted,
   },
   breakdownBox: {
-    backgroundColor: '#1C232B',
+    backgroundColor: COLORS.card, // #242B32
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: '#2A333D',
+    borderColor: COLORS.border,
     padding: SPACING.sm,
     gap: 6,
   },
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
   totalRow: {
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: COLORS.border,
   },
   totalLabel: {
     fontSize: 13,
@@ -349,7 +350,7 @@ const styles = StyleSheet.create({
   totalVal: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#10B981',
+    color: '#FFFFFF',
   },
   payBtn: {
     marginTop: SPACING.sm,
@@ -357,13 +358,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: '#FFFFFF', // Pure White logo accent
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: RADIUS.md,
   },
   payBtnText: {
-    color: '#FFFFFF',
+    color: '#1C232B', // Dark high-contrast text
     fontSize: 12,
     fontWeight: '800',
   },
@@ -373,9 +374,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: COLORS.border,
     paddingVertical: 8,
     borderRadius: RADIUS.md,
   },
@@ -395,12 +396,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: COLORS.text,
+    backgroundColor: COLORS.primary,
     paddingVertical: 10,
     borderRadius: RADIUS.md,
   },
   qrBtnText: {
-    color: COLORS.background,
+    color: COLORS.buttonText,
     fontSize: 12,
     fontWeight: '800',
   },

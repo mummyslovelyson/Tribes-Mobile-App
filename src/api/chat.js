@@ -1,7 +1,7 @@
 import client from './client';
 
-export const sendChatMessageApi = async (message, conversationHistory = [], context = {}) => {
-  const res = await client.post('/chat/message', {
+export const sendChatMessageApi = async (message, conversationHistory = [], context = {}, audioData = null) => {
+  const payload = {
     message,
     conversationHistory,
     context: {
@@ -9,7 +9,12 @@ export const sendChatMessageApi = async (message, conversationHistory = [], cont
       platform: 'mobile',
       mode: context.mode || 'chat',
     },
-  });
+  };
+  if (audioData?.audioBase64) {
+    payload.audioBase64 = audioData.audioBase64;
+    payload.audioMimeType = audioData.audioMimeType || 'audio/m4a';
+  }
+  const res = await client.post('/chat/message', payload);
   return res.data;
 };
 

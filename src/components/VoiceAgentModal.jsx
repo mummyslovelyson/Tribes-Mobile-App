@@ -8,22 +8,26 @@ import {
   Animated,
   ScrollView,
   Platform,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import { sendChatMessageApi } from '../api/chat';
+import { sendChatMessageApi, createAgentBookingHoldApi } from '../api/chat';
 import ChatEventCard from './ChatEventCard';
 import ChatTicketCard from './ChatTicketCard';
 import ChatBookingCard from './ChatBookingCard';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
 
 const QUICK_VOICE_COMMANDS = [
-  'What is happening this weekend?',
-  'Concerts and live music in Accra',
-  'Show my active tickets',
-  'Events under 100 Cedis',
-  'How do I transfer a pass?',
+  'What events are happening this weekend?',
+  'Concerts and music in Accra',
+  'Order 2 regular tickets for Afrochella',
+  'Show my active passes',
+  'Events in Kumasi under 100 Cedis',
 ];
 
 export default function VoiceAgentModal({
@@ -36,11 +40,12 @@ export default function VoiceAgentModal({
   const [transcript, setTranscript] = useState('');
   const [lastAgentReply, setLastAgentReply] = useState(
     user?.name
-      ? `Hello ${user.name}! I am Cliq Voice Concierge. What event or passes can I help you find?`
-      : 'Hello! I am Cliq Voice Concierge. Tell me what event or passes you are looking for.'
+      ? `Hello ${user.name}! I am Clqs Bot. Tell me what events or passes you want to find or order.`
+      : 'Hello! I am Clqs Bot. What event would you like to explore or book today?'
   );
   const [isMuted, setIsMuted] = useState(false);
   const [cardsData, setCardsData] = useState({ events: [], tickets: [], booking: null, actions: [] });
+  const [recordingDuration, setRecordingDuration] = useState(0);
 
   // Animation controllers using state (React 19 compliant)
   const [pulseAnim] = useState(() => new Animated.Value(1));
@@ -48,10 +53,12 @@ export default function VoiceAgentModal({
   const [waveAnim2] = useState(() => new Animated.Value(0.2));
   const [rotateAnim] = useState(() => new Animated.Value(0));
 
-  const recognitionRef = useRef(null);
+  const recordingRef = useRef(null);
+  const recordingTimerRef = useRef(null);
   const isMountedRef = useRef(true);
+  const recognitionRef = useRef(null);
 
-  // Breathing & pulse animation loop
+  // Concentric logo-colored halo animations
   useEffect(() => {
     let anim;
     if (agentState === 'listening' || agentState === 'speaking') {
@@ -90,21 +97,23 @@ export default function VoiceAgentModal({
     return () => anim?.stop();
   }, [agentState, pulseAnim, waveAnim1, waveAnim2, rotateAnim]);
 
-  // Clean phonetics for natural speech
+  // Clean phonetics for natural, plain English speech
   const cleanForSpeech = (text) => {
     if (!text) return '';
     return text
       .replace(/GHS\s*(\d+)/gi, '$1 Ghana Cedis')
+      .replace(/GHS/gi, 'Ghana Cedis')
       .replace(/\bVIP\b/g, 'V-I-P')
       .replace(/\bVVIP\b/g, 'V-V-I-P')
       .replace(/\*+/g, '')
       .replace(/#+/g, '')
       .replace(/•/g, '')
       .replace(/\[.*?\]\(.*?\)/g, '')
+      .replace(/─+/g, '')
       .trim();
   };
 
-  // Speak response out loud using expo-speech
+  // Speak response out loud in plain English via expo-speech
   const speakResponse = useCallback((text) => {
     if (isMuted || !text) return;
 
@@ -112,11 +121,11 @@ export default function VoiceAgentModal({
       Speech.stop();
       setAgentState('speaking');
 
-      const spokenText = cleanForSpeech(text);
-      Speech.speak(spokenText, {
+      const plainEnglish = cleanForSpeech(text);
+      Speech.speak(plainEnglish, {
         language: 'en-US',
         pitch: 1.0,
-        rate: 0.96,
+        rate: 0.95,
         onDone: () => {
           if (isMountedRef.current) setAgentState('idle');
         },
@@ -133,7 +142,21 @@ export default function VoiceAgentModal({
     }
   }, [isMuted]);
 
-  // On mount or when modal becomes visible, greet user
+  const stopAllAudio = useCallback(() => {
+    Speech.stop();
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    if (recordingRef.current) {
+      try {
+        recordingRef.current.stopAndUnloadAsync();
+      } catch {}
+      recordingRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+    }
+  }, []);
+
+  // On mount or visibility change
   useEffect(() => {
     isMountedRef.current = true;
     if (visible) {
@@ -141,19 +164,13 @@ export default function VoiceAgentModal({
         speakResponse(lastAgentReply);
       }
     } else {
-      Speech.stop();
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-      }
+      stopAllAudio();
     }
     return () => {
       isMountedRef.current = false;
-      Speech.stop();
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-      }
+      stopAllAudio();
     };
-  }, [visible, isMuted, lastAgentReply, speakResponse]);
+  }, [visible, isMuted, lastAgentReply, speakResponse, stopAllAudio]);
 
   // Stop speaking when muted
   useEffect(() => {
@@ -163,10 +180,10 @@ export default function VoiceAgentModal({
     }
   }, [isMuted, agentState]);
 
-  // Handle Voice Inquiry execution
-  const processVoiceInput = async (spokenQuery) => {
-    const query = (spokenQuery || transcript).trim();
-    if (!query) return;
+  // Process voice inquiry / booking in plain English
+  const processVoiceInput = async (spokenQuery, audioBase64 = null) => {
+    const query = (spokenQuery || transcript || '').trim();
+    if (!query && !audioBase64) return;
 
     try {
       Speech.stop();
@@ -175,11 +192,54 @@ export default function VoiceAgentModal({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
-      const res = await sendChatMessageApi(query, [], {
-        userId: user?.id,
-        userRole: user?.role || 'attendee',
-        mode: 'voice',
-      });
+      // Check if user spoke to confirm an active order
+      const lowerQuery = query.toLowerCase();
+      const isConfirming = lowerQuery.includes('confirm') || lowerQuery.includes('pay now') || lowerQuery.includes('pay with paystack');
+
+      if (isConfirming && cardsData.booking?.status === 'summary') {
+        // Place order / hold tickets for 10 minutes immediately!
+        try {
+          const holdRes = await createAgentBookingHoldApi({
+            booking: cardsData.booking,
+            paymentMethod: 'Paystack',
+          });
+
+          if (holdRes?.success && holdRes?.booking) {
+            setCardsData((prev) => ({
+              ...prev,
+              booking: holdRes.booking,
+            }));
+            const confirmMsg = `Order placed! I have reserved your tickets for 10 minutes. Tap Pay with Paystack below to complete your checkout.`;
+            setLastAgentReply(confirmMsg);
+            if (!isMuted) speakResponse(confirmMsg);
+            if (holdRes.booking.authorizationUrl) {
+              Linking.openURL(holdRes.booking.authorizationUrl);
+            }
+            return;
+          }
+        } catch (holdErr) {
+          console.warn('[VoiceAgent] Order hold error:', holdErr.message);
+        }
+      }
+
+      const res = await sendChatMessageApi(
+        query || 'voice_note',
+        [],
+        {
+          userId: user?.id,
+          userRole: user?.role || 'attendee',
+          mode: 'voice',
+          booking: cardsData.booking,
+        },
+        audioBase64 ? { audioBase64, audioMimeType: 'audio/m4a' } : null
+      );
+
+      // If backend transcribed the audio, update transcript display
+      if (res?.transcribedText) {
+        setTranscript(res.transcribedText);
+      } else if (query && query !== 'voice_note') {
+        setTranscript(query);
+      }
 
       const reply = res?.reply || 'I found some matching events for you.';
       setLastAgentReply(reply);
@@ -201,19 +261,94 @@ export default function VoiceAgentModal({
       }
     } catch (err) {
       console.warn('[VoiceAgent] API Error:', err.message);
-      const errMsg = 'I could not connect to the voice assistant right now. Please check your network connection.';
+      const errMsg = 'I could not connect to Clqs Bot right now. Please check your network and try again.';
       setLastAgentReply(errMsg);
       setAgentState('idle');
       if (!isMuted) speakResponse(errMsg);
     }
   };
 
-  // Web Speech Recognition for Expo Web Preview
+  // Real Native Microphone Recording using expo-av
+  const startRecordingAudio = async () => {
+    try {
+      Speech.stop();
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Microphone Access Required', 'Please allow microphone access in your settings so Clqs Bot can hear you.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setRecordingDuration(0);
+      setAgentState('listening');
+      setTranscript('Listening... Speak now');
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((sec) => sec + 1);
+      }, 1000);
+
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+    } catch (err) {
+      console.error('[VoiceAgent] Failed to start recording:', err);
+      setAgentState('idle');
+      Alert.alert('Microphone Error', 'Could not access device microphone. Please try again.');
+    }
+  };
+
+  // Stop Recording and Process Audio
+  const stopRecordingAudio = async () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    const recording = recordingRef.current;
+    if (!recording) {
+      setAgentState('idle');
+      return;
+    }
+
+    try {
+      setAgentState('thinking');
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      recordingRef.current = null;
+
+      if (!uri) {
+        setAgentState('idle');
+        return;
+      }
+
+      // Convert audio file to Base64
+      const base64Audio = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      if (base64Audio) {
+        setTranscript('Transcribing your voice...');
+        await processVoiceInput('', base64Audio);
+      } else {
+        setAgentState('idle');
+      }
+    } catch (err) {
+      console.error('[VoiceAgent] Failed to stop recording:', err);
+      setAgentState('idle');
+    }
+  };
+
+  // Web Browser Speech Recognition fallback
   const startWebListening = () => {
     if (typeof window === 'undefined') return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setTranscript('Speech recognition is not supported in this browser. Tap a quick prompt below.');
+      startRecordingAudio();
       return;
     }
 
@@ -238,23 +373,19 @@ export default function VoiceAgentModal({
         }
       };
 
-      rec.onerror = () => {
-        setAgentState('idle');
-      };
-
+      rec.onerror = () => setAgentState('idle');
       rec.onend = () => {
-        if (agentState === 'listening') {
-          setAgentState('idle');
-        }
+        if (agentState === 'listening') setAgentState('idle');
       };
 
       recognitionRef.current = rec;
       rec.start();
-    } catch (e) {
-      console.warn('[VoiceAgent.web]', e);
+    } catch {
+      startRecordingAudio();
     }
   };
 
+  // Main Microphone Orb Tap Handler
   const handleMicPress = () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -267,22 +398,18 @@ export default function VoiceAgentModal({
     }
 
     if (agentState === 'listening') {
-      if (recognitionRef.current) {
+      if (Platform.OS === 'web' && recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch {}
+      } else {
+        stopRecordingAudio();
       }
-      setAgentState('idle');
       return;
     }
 
     if (Platform.OS === 'web') {
       startWebListening();
     } else {
-      // On mobile native, prompt listening state and trigger sample voice inquiry
-      setAgentState('listening');
-      setTranscript('Listening to voice query...');
-      setTimeout(() => {
-        setAgentState('idle');
-      }, 3000);
+      startRecordingAudio();
     }
   };
 
@@ -299,12 +426,12 @@ export default function VoiceAgentModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Top Header */}
+        {/* Top Header strictly in official logo colors */}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={() => {
-              Speech.stop();
+              stopAllAudio();
               onClose?.();
             }}
           >
@@ -312,8 +439,8 @@ export default function VoiceAgentModal({
           </TouchableOpacity>
 
           <View style={styles.agentTitleContainer}>
-            <View style={[styles.statusDot, agentState === 'listening' ? styles.statusGreen : agentState === 'speaking' ? styles.statusCyan : styles.statusAmber]} />
-            <Text style={styles.agentTitle}>Cliq Voice Concierge</Text>
+            <View style={[styles.statusDot, agentState === 'listening' ? styles.statusActive : styles.statusIdle]} />
+            <Text style={styles.agentTitle}>Clqs Bot Voice Assistant</Text>
           </View>
 
           <View style={styles.headerRight}>
@@ -325,17 +452,17 @@ export default function VoiceAgentModal({
               <Ionicons
                 name={isMuted ? 'volume-mute-outline' : 'volume-high-outline'}
                 size={22}
-                color={isMuted ? '#EF4444' : COLORS.text}
+                color={isMuted ? COLORS.textMuted : COLORS.text}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.headerBtn}
               onPress={() => {
-                Speech.stop();
+                stopAllAudio();
                 onSwitchToChat?.();
               }}
-              title="Switch to Text Chat"
+              title="Open Chatbot"
             >
               <Ionicons name="chatbubbles-outline" size={22} color={COLORS.text} />
             </TouchableOpacity>
@@ -347,7 +474,7 @@ export default function VoiceAgentModal({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Main Visual Orb */}
+          {/* Main Visual Orb with Logo Colors: Crisp White, Metallic Silver, Deep Slate */}
           <View style={styles.orbContainer}>
             {/* Outer animated halo rings */}
             <Animated.View
@@ -357,7 +484,7 @@ export default function VoiceAgentModal({
                 {
                   opacity: waveAnim2,
                   transform: [{ scale: pulseAnim }],
-                  borderColor: agentState === 'speaking' ? '#06B6D4' : agentState === 'listening' ? '#10B981' : '#3B82F6',
+                  borderColor: agentState === 'listening' ? '#FFFFFF' : '#CBD5E1',
                 },
               ]}
             />
@@ -368,7 +495,7 @@ export default function VoiceAgentModal({
                 {
                   opacity: waveAnim1,
                   transform: [{ scale: pulseAnim }],
-                  borderColor: agentState === 'speaking' ? '#10B981' : agentState === 'thinking' ? '#F59E0B' : '#06B6D4',
+                  borderColor: agentState === 'listening' ? '#EFEFF1' : 'rgba(239, 239, 241, 0.4)',
                 },
               ]}
             />
@@ -386,33 +513,33 @@ export default function VoiceAgentModal({
             >
               {agentState === 'thinking' ? (
                 <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                  <Ionicons name="sync" size={44} color="#FFFFFF" />
+                  <Ionicons name="sync" size={44} color="#1C232B" />
                 </Animated.View>
               ) : agentState === 'speaking' ? (
-                <Ionicons name="volume-high" size={44} color="#FFFFFF" />
+                <Ionicons name="volume-high" size={44} color="#1C232B" />
               ) : agentState === 'listening' ? (
-                <Ionicons name="mic" size={44} color="#FFFFFF" />
+                <Ionicons name="mic" size={44} color="#1C232B" />
               ) : (
-                <Ionicons name="mic-outline" size={44} color="#FFFFFF" />
+                <Ionicons name="mic-outline" size={44} color="#1C232B" />
               )}
             </TouchableOpacity>
 
             <Text style={styles.orbStateLabel}>
               {agentState === 'listening'
-                ? 'Listening to you...'
+                ? `Recording voice (${recordingDuration}s)... Tap orb to finish`
                 : agentState === 'thinking'
-                ? 'Processing event data...'
+                ? 'Clqs Bot is processing your request...'
                 : agentState === 'speaking'
-                ? 'Cliq is speaking (Tap to pause)'
-                : 'Tap to speak'}
+                ? 'Clqs Bot is speaking (Tap to pause)'
+                : 'Tap orb and speak in plain English'}
             </Text>
           </View>
 
           {/* Transcript / Spoken Utterance Box */}
           <View style={styles.speechCard}>
             <View style={styles.speechCardHeader}>
-              <Ionicons name="sparkles" size={14} color="#10B981" />
-              <Text style={styles.speechCardTitle}>VOICE AGENT RESPONSE</Text>
+              <Ionicons name="sparkles" size={14} color={COLORS.primary} />
+              <Text style={styles.speechCardTitle}>CLQS BOT RESPONSE</Text>
             </View>
             <Text style={styles.agentReplyText}>{lastAgentReply}</Text>
 
@@ -424,17 +551,35 @@ export default function VoiceAgentModal({
             )}
           </View>
 
-          {/* Render Returned Event Cards */}
+          {/* Direct Voice Order / Reservation Card */}
+          {cardsData.booking && (
+            <View style={styles.cardsSection}>
+              <Text style={styles.sectionHeader}>ORDER &amp; TICKET RESERVATION</Text>
+              <ChatBookingCard
+                booking={cardsData.booking}
+                onContinuePayment={(b) => {
+                  if (b.authorizationUrl) {
+                    Linking.openURL(b.authorizationUrl);
+                  } else {
+                    processVoiceInput(`Confirm order for ${b.eventTitle}`);
+                  }
+                }}
+                onVerifyPayment={(b) => processVoiceInput(`Verify payment for ${b.orderId || b.reference}`)}
+              />
+            </View>
+          )}
+
+          {/* Render Returned Recommended Events */}
           {cardsData.events && cardsData.events.length > 0 && (
             <View style={styles.cardsSection}>
-              <Text style={styles.sectionHeader}>RECOMMENDED EVENTS</Text>
+              <Text style={styles.sectionHeader}>MATCHING EVENTS</Text>
               {cardsData.events.map((ev, idx) => (
                 <ChatEventCard key={`ev-${ev.id || idx}`} event={ev} />
               ))}
             </View>
           )}
 
-          {/* Render Returned Ticket Cards */}
+          {/* Render Returned Ticket Passes */}
           {cardsData.tickets && cardsData.tickets.length > 0 && (
             <View style={styles.cardsSection}>
               <Text style={styles.sectionHeader}>YOUR PASSES</Text>
@@ -444,17 +589,9 @@ export default function VoiceAgentModal({
             </View>
           )}
 
-          {/* Render Booking Hold Card */}
-          {cardsData.booking && (
-            <View style={styles.cardsSection}>
-              <Text style={styles.sectionHeader}>TICKET RESERVATION</Text>
-              <ChatBookingCard booking={cardsData.booking} />
-            </View>
-          )}
-
-          {/* Quick Voice Inquiry Prompts */}
+          {/* Quick Plain-English Voice Commands */}
           <View style={styles.quickCommandsSection}>
-            <Text style={styles.quickCommandsTitle}>TRY ASKING BY VOICE</Text>
+            <Text style={styles.quickCommandsTitle}>EXAMPLE VOICE COMMANDS</Text>
             <View style={styles.commandsGrid}>
               {QUICK_VOICE_COMMANDS.map((cmd, idx) => (
                 <TouchableOpacity
@@ -466,7 +603,7 @@ export default function VoiceAgentModal({
                     processVoiceInput(cmd);
                   }}
                 >
-                  <Ionicons name="chatbubble-ellipses-outline" size={13} color="#10B981" />
+                  <Ionicons name="mic-outline" size={13} color={COLORS.textSecondary} />
                   <Text style={styles.commandPillText}>{cmd}</Text>
                 </TouchableOpacity>
               ))}
@@ -479,12 +616,12 @@ export default function VoiceAgentModal({
           <TouchableOpacity
             style={styles.switchModeBtn}
             onPress={() => {
-              Speech.stop();
+              stopAllAudio();
               onSwitchToChat?.();
             }}
           >
-            <Ionicons name="chatbubble-outline" size={16} color={COLORS.text} />
-            <Text style={styles.switchModeText}>Open Text Chat Mode</Text>
+            <Ionicons name="chatbubble-outline" size={16} color={COLORS.buttonText} />
+            <Text style={styles.switchModeText}>Open Text Chatbot</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -495,7 +632,7 @@ export default function VoiceAgentModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1317',
+    backgroundColor: COLORS.background, // #1C232B
   },
   topBar: {
     flexDirection: 'row',
@@ -505,13 +642,13 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 52 : 36,
     paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#14181C',
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface, // #161D22
   },
   headerBtn: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.card,
   },
   headerRight: {
     flexDirection: 'row',
@@ -528,19 +665,20 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  statusGreen: {
-    backgroundColor: '#10B981',
+  statusActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
-  statusCyan: {
-    backgroundColor: '#06B6D4',
-  },
-  statusAmber: {
-    backgroundColor: '#F59E0B',
+  statusIdle: {
+    backgroundColor: COLORS.textMuted,
   },
   agentTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: COLORS.text,
   },
   scrollArea: {
     flex: 1,
@@ -559,7 +697,7 @@ const styles = StyleSheet.create({
   waveRing: {
     position: 'absolute',
     borderRadius: 200,
-    borderWidth: 2,
+    borderWidth: 1.5,
   },
   waveRingOuter: {
     width: 200,
@@ -570,50 +708,48 @@ const styles = StyleSheet.create({
     height: 150,
   },
   orbButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#1F2937',
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#10B981',
+    shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
     elevation: 8,
-    borderWidth: 3,
-    borderColor: '#374151',
+    borderWidth: 2,
+    borderColor: COLORS.silver,
   },
   orbListening: {
-    backgroundColor: '#10B981',
-    borderColor: '#34D399',
-    shadowColor: '#10B981',
-    shadowOpacity: 0.8,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EFEFF1',
+    shadowOpacity: 0.7,
+    shadowRadius: 20,
   },
   orbSpeaking: {
-    backgroundColor: '#059669',
-    borderColor: '#6EE7B7',
-    shadowColor: '#059669',
-    shadowOpacity: 0.7,
+    backgroundColor: COLORS.silver,
+    borderColor: '#FFFFFF',
+    shadowOpacity: 0.5,
   },
   orbThinking: {
-    backgroundColor: '#D97706',
-    borderColor: '#FCD34D',
-    shadowColor: '#F59E0B',
-    shadowOpacity: 0.7,
+    backgroundColor: COLORS.textSecondary,
+    borderColor: '#FFFFFF',
   },
   orbStateLabel: {
     marginTop: SPACING.md,
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
   speechCard: {
     width: '100%',
-    backgroundColor: '#161D22',
+    backgroundColor: COLORS.surface, // #161D22
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: '#262F38',
+    borderColor: COLORS.border,
     padding: SPACING.lg,
     marginVertical: SPACING.md,
   },
@@ -626,13 +762,13 @@ const styles = StyleSheet.create({
   speechCardTitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#10B981',
+    color: COLORS.textSecondary,
     letterSpacing: 0.8,
   },
   agentReplyText: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#FFFFFF',
+    color: COLORS.text,
     fontWeight: '600',
   },
   transcriptRow: {
@@ -642,11 +778,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: COLORS.border,
   },
   transcriptText: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
     fontStyle: 'italic',
   },
   cardsSection: {
@@ -681,12 +817,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#1C232B',
+    backgroundColor: COLORS.card,
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: '#2A333D',
+    borderColor: COLORS.border,
   },
   commandPillText: {
     fontSize: 12,
@@ -696,22 +832,22 @@ const styles = StyleSheet.create({
   bottomBar: {
     padding: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#14181C',
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
   },
   switchModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: 11,
+    paddingHorizontal: 22,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: COLORS.primary, // #EFEFF1
   },
   switchModeText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontWeight: '800',
+    color: COLORS.buttonText, // #1C232B
   },
 });
