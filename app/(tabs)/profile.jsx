@@ -405,6 +405,13 @@ export default function ProfileScreen() {
             onPress: () => router.push('/admin'),
             authRequired: true,
           },
+          {
+            id: 'admin_gate_check_in',
+            title: 'Gate Pass Check-In (All Events • Boss Access)',
+            icon: 'qr-code-outline',
+            onPress: () => router.push('/check-in'),
+            authRequired: true,
+          },
         ]
       : []),
     ...(isStaffOrOrganizer
@@ -720,27 +727,51 @@ export default function ProfileScreen() {
 
         {/* Admin Quick Access Banner */}
         {isAdmin && (
-          <TouchableOpacity
-            style={styles.adminBanner}
-            activeOpacity={0.85}
-            onPress={() => router.push('/admin')}
-          >
-            <View style={styles.adminBannerLeft}>
-              <View style={styles.adminIconBox}>
-                <Ionicons name="shield-checkmark" size={22} color={COLORS.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.adminBadgeSmall}>
-                  <Text style={styles.adminBadgeSmallText}>ADMIN ACCESS</Text>
+          <>
+            <TouchableOpacity
+              style={styles.adminBanner}
+              activeOpacity={0.85}
+              onPress={() => router.push('/admin')}
+            >
+              <View style={styles.adminBannerLeft}>
+                <View style={styles.adminIconBox}>
+                  <Ionicons name="shield-checkmark" size={22} color={COLORS.primary} />
                 </View>
-                <Text style={styles.adminBannerTitle}>Admin Control Center</Text>
-                <Text style={styles.adminBannerSubtitle}>
-                  Moderate events, organizers, users &amp; remote settings
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.adminBadgeSmall}>
+                    <Text style={styles.adminBadgeSmallText}>ADMIN ACCESS</Text>
+                  </View>
+                  <Text style={styles.adminBannerTitle}>Admin Control Center</Text>
+                  <Text style={styles.adminBannerSubtitle}>
+                    Moderate events, organizers, users &amp; remote settings
+                  </Text>
+                </View>
               </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.adminBanner, { marginTop: 10, borderColor: 'rgba(16, 185, 129, 0.45)' }]}
+              activeOpacity={0.85}
+              onPress={() => router.push('/check-in')}
+            >
+              <View style={styles.adminBannerLeft}>
+                <View style={[styles.adminIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Ionicons name="qr-code-outline" size={22} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={[styles.adminBadgeSmall, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
+                    <Text style={[styles.adminBadgeSmallText, { color: '#10B981' }]}>PLATFORM BOSS ACCESS</Text>
+                  </View>
+                  <Text style={styles.adminBannerTitle}>Gate Ticket Check-In (All Events)</Text>
+                  <Text style={styles.adminBannerSubtitle}>
+                    Live QR scanner with platform-wide authority to verify passes across all events
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#10B981" />
+            </TouchableOpacity>
+          </>
         )}
 
         {/* Menu Section */}

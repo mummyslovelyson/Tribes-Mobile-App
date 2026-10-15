@@ -65,7 +65,9 @@ export default function CheckInScreen() {
 
   // Selected event filter
   const [selectedEventId, setSelectedEventId] = useState(searchParams?.eventId ? Number(searchParams.eventId) : 'all');
-  const [selectedEventTitle, setSelectedEventTitle] = useState(searchParams?.eventTitle || 'All Events');
+  const [selectedEventTitle, setSelectedEventTitle] = useState(
+    searchParams?.eventTitle || (isAdmin ? '⭐ All Platform Events (Global Boss Check-In)' : 'All Events')
+  );
   const [organizerEvents, setOrganizerEvents] = useState([]);
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
 
@@ -500,7 +502,7 @@ export default function CheckInScreen() {
       {/* Screen Header */}
       <Header
         title="Gate Check-In"
-        subtitle={isAdmin ? `Admin: ${user?.name || user?.email || 'Administrator'}` : `Organizer: ${user?.name || user?.email || 'Staff'}`}
+        subtitle={isAdmin ? `Platform Boss: ${user?.name || user?.email || 'Admin'} (All Events)` : `Organizer: ${user?.name || user?.email || 'Staff'}`}
         showNotification={false}
       />
 
@@ -1101,14 +1103,14 @@ export default function CheckInScreen() {
                 ]}
                 onPress={() => {
                   setSelectedEventId('all');
-                  setSelectedEventTitle('All My Events');
+                  setSelectedEventTitle(isAdmin ? '⭐ All Platform Events (Global Boss Access)' : 'All My Events');
                   setEventPickerOpen(false);
                 }}
               >
                 <Ionicons
-                  name="globe-outline"
+                  name={isAdmin ? 'shield-checkmark' : 'globe-outline'}
                   size={20}
-                  color={selectedEventId === 'all' ? COLORS.primary : COLORS.textMuted}
+                  color={selectedEventId === 'all' ? (isAdmin ? '#10B981' : COLORS.primary) : COLORS.textMuted}
                 />
                 <View style={{ flex: 1 }}>
                   <Text
@@ -1117,12 +1119,16 @@ export default function CheckInScreen() {
                       selectedEventId === 'all' && styles.eventOptionTitleActive,
                     ]}
                   >
-                    All My Events
+                    {isAdmin ? '⭐ All Platform Events (Global Boss Access)' : 'All My Events'}
                   </Text>
-                  <Text style={styles.eventOptionSubtitle}>Scan tickets across any active event</Text>
+                  <Text style={styles.eventOptionSubtitle}>
+                    {isAdmin
+                      ? 'Platform boss check-in: Scan tickets across any event in the system'
+                      : 'Scan tickets across any active event'}
+                  </Text>
                 </View>
                 {selectedEventId === 'all' && (
-                  <Ionicons name="checkmark" size={18} color={COLORS.primary} />
+                  <Ionicons name="checkmark" size={18} color={isAdmin ? '#10B981' : COLORS.primary} />
                 )}
               </TouchableOpacity>
 

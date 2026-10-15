@@ -617,14 +617,14 @@ export default function AdminControlCenterScreen({ isTabScreen = false }) {
                   <Ionicons name="qr-code" size={24} color="#161D22" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.checkInQuickTitle}>Gate Pass Check-In</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text style={styles.checkInQuickTitle}>Gate Pass Check-In (All Events)</Text>
                     <View style={styles.checkInLiveBadge}>
-                      <Text style={styles.checkInLiveBadgeText}>LIVE GATE SCANNER</Text>
+                      <Text style={styles.checkInLiveBadgeText}>PLATFORM BOSS ACCESS</Text>
                     </View>
                   </View>
                   <Text style={styles.checkInQuickSubtitle}>
-                    Scan attendee QR codes, verify passes &amp; monitor admissions across all events
+                    Scan attendee QR codes, verify passes &amp; monitor gate admissions across any event
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
