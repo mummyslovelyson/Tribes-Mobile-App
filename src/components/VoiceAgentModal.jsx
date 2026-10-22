@@ -12,15 +12,23 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
+
 import { sendChatMessageApi, createAgentBookingHoldApi } from '../api/chat';
 import ChatEventCard from './ChatEventCard';
 import ChatTicketCard from './ChatTicketCard';
 import ChatBookingCard from './ChatBookingCard';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
+
+// expo-av requires ExponentAV native module which is not bundled in standard Expo Go (SDK 53+)
+let Audio = null;
+try {
+  Audio = require('expo-av')?.Audio;
+} catch {
+  Audio = null;
+}
 
 const QUICK_VOICE_COMMANDS = [
   'What events are happening this weekend?',
@@ -272,6 +280,14 @@ export default function VoiceAgentModal({
   const startRecordingAudio = async () => {
     try {
       Speech.stop();
+      if (!Audio) {
+        Alert.alert(
+          'Microphone Unavailable',
+          'Voice recording requires a development build (npx expo run:android). You can still tap suggestions or use text chat to talk with Clqs Bot!'
+        );
+        setAgentState('idle');
+        return;
+      }
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone Access Required', 'Please allow microphone access in your settings so Clqs Bot can hear you.');

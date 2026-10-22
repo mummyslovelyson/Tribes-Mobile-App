@@ -17,10 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
+
 import ChatTicketCard from '../../src/components/ChatTicketCard';
 import ChatEventCard from '../../src/components/ChatEventCard';
 import ChatBookingCard from '../../src/components/ChatBookingCard';
@@ -32,6 +32,14 @@ import {
 } from '../../src/api/chat';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
+
+// expo-av requires ExponentAV native module which is not bundled in standard Expo Go (SDK 53+)
+let Audio = null;
+try {
+  Audio = require('expo-av')?.Audio;
+} catch {
+  Audio = null;
+}
 
 const CHAT_STORAGE_KEY = 'clqs_bot_chat_history_v3';
 
@@ -352,6 +360,13 @@ export default function ChatScreen() {
   const startRecordingVoiceNote = async () => {
     try {
       Speech.stop();
+      if (!Audio) {
+        Alert.alert(
+          'Microphone Unavailable',
+          'Voice recording requires a custom development build (npx expo run:android). Text chat and spoken audio replies are fully supported in Expo Go!'
+        );
+        return;
+      }
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone Access Required', 'Please enable microphone access in settings to record voice notes.');
