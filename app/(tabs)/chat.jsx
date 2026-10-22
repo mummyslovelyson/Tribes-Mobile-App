@@ -20,6 +20,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  setAudioModeAsync,
+  requestRecordingPermissionsAsync,
+} from 'expo-audio';
 
 import ChatTicketCard from '../../src/components/ChatTicketCard';
 import ChatEventCard from '../../src/components/ChatEventCard';
@@ -32,14 +38,6 @@ import {
 } from '../../src/api/chat';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SPACING, RADIUS } from '../../src/constants/theme';
-
-// expo-av requires ExponentAV native module which is not bundled in standard Expo Go (SDK 53+)
-let Audio = null;
-try {
-  Audio = require('expo-av')?.Audio;
-} catch {
-  Audio = null;
-}
 
 const CHAT_STORAGE_KEY = 'clqs_bot_chat_history_v3';
 
@@ -81,9 +79,9 @@ export default function ChatScreen() {
   const [speakingMessageId, setSpeakingMessageId] = useState(null);
 
   // Voice Note Recording State
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecordingNote, setIsRecordingNote] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const recordingRef = useRef(null);
   const recordingTimerRef = useRef(null);
   const [recordBlinkAnim] = useState(() => new Animated.Value(1));
 
@@ -360,28 +358,19 @@ export default function ChatScreen() {
   const startRecordingVoiceNote = async () => {
     try {
       Speech.stop();
-      if (!Audio) {
-        Alert.alert(
-          'Microphone Unavailable',
-          'Voice recording requires a custom development build (npx expo run:android). Text chat and spoken audio replies are fully supported in Expo Go!'
-        );
-        return;
-      }
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone Access Required', 'Please enable microphone access in settings to record voice notes.');
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      recordingRef.current = recording;
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       setRecordingDuration(0);
       setIsRecordingNote(true);
 
@@ -402,28 +391,20 @@ export default function ChatScreen() {
 
   const cancelRecordingVoiceNote = async () => {
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    if (recordingRef.current) {
-      try {
-        await recordingRef.current.stopAndUnloadAsync();
-      } catch {}
-      recordingRef.current = null;
-    }
+    try {
+      if (audioRecorder.isRecording) {
+        await audioRecorder.stop();
+      }
+    } catch {}
     setIsRecordingNote(false);
     setRecordingDuration(0);
   };
 
   const sendVoiceNote = async () => {
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    const recording = recordingRef.current;
-    if (!recording) {
-      setIsRecordingNote(false);
-      return;
-    }
-
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      recordingRef.current = null;
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
       setIsRecordingNote(false);
 
       if (!uri) return;

@@ -15,20 +15,18 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  setAudioModeAsync,
+  requestRecordingPermissionsAsync,
+} from 'expo-audio';
 
 import { sendChatMessageApi, createAgentBookingHoldApi } from '../api/chat';
 import ChatEventCard from './ChatEventCard';
 import ChatTicketCard from './ChatTicketCard';
 import ChatBookingCard from './ChatBookingCard';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
-
-// expo-av requires ExponentAV native module which is not bundled in standard Expo Go (SDK 53+)
-let Audio = null;
-try {
-  Audio = require('expo-av')?.Audio;
-} catch {
-  Audio = null;
-}
 
 const QUICK_VOICE_COMMANDS = [
   'What events are happening this weekend?',
@@ -54,6 +52,9 @@ export default function VoiceAgentModal({
   const [isMuted, setIsMuted] = useState(false);
   const [cardsData, setCardsData] = useState({ events: [], tickets: [], booking: null, actions: [] });
   const [recordingDuration, setRecordingDuration] = useState(0);
+
+  // Native Audio Recorder via expo-audio (Native in Expo Go SDK 53+)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   // Animation controllers using state (React 19 compliant)
   const [pulseAnim] = useState(() => new Animated.Value(1));
@@ -153,16 +154,15 @@ export default function VoiceAgentModal({
   const stopAllAudio = useCallback(() => {
     Speech.stop();
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    if (recordingRef.current) {
-      try {
-        recordingRef.current.stopAndUnloadAsync();
-      } catch {}
-      recordingRef.current = null;
-    }
+    try {
+      if (audioRecorder?.isRecording) {
+        audioRecorder.stop();
+      }
+    } catch {}
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
     }
-  }, []);
+  }, [audioRecorder]);
 
   // On mount or visibility change
   useEffect(() => {
@@ -276,33 +276,23 @@ export default function VoiceAgentModal({
     }
   };
 
-  // Real Native Microphone Recording using expo-av
+  // Real Native Microphone Recording using expo-audio (Native in Expo Go)
   const startRecordingAudio = async () => {
     try {
       Speech.stop();
-      if (!Audio) {
-        Alert.alert(
-          'Microphone Unavailable',
-          'Voice recording requires a development build (npx expo run:android). You can still tap suggestions or use text chat to talk with Clqs Bot!'
-        );
-        setAgentState('idle');
-        return;
-      }
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert('Microphone Access Required', 'Please allow microphone access in your settings so Clqs Bot can hear you.');
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      recordingRef.current = recording;
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       setRecordingDuration(0);
       setAgentState('listening');
       setTranscript('Listening... Speak now');
@@ -325,17 +315,10 @@ export default function VoiceAgentModal({
   // Stop Recording and Process Audio
   const stopRecordingAudio = async () => {
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    const recording = recordingRef.current;
-    if (!recording) {
-      setAgentState('idle');
-      return;
-    }
-
     try {
       setAgentState('thinking');
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      recordingRef.current = null;
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
 
       if (!uri) {
         setAgentState('idle');
